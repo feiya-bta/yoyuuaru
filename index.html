@@ -12,9 +12,15 @@
     <div class="app-container">
         <header class="app-header">
             <h1 class="logo">余裕、ある？</h1>
-            <button class="icon-button" id="btn-open-category" title="カテゴリ設定">
-                <span class="material-icons-round">settings</span>
-            </button>
+            <div class="header-actions">
+                <button class="icon-button" id="btn-open-data" title="データ管理">
+                    <span class="material-icons-round">storage</span>
+                </button>
+                <button class="icon-button" id="btn-open-category" title="カテゴリ設定">
+                    <span class="material-icons-round">settings</span>
+                </button>
+            </div>
+
         </header>
 
         <main class="app-content">
@@ -120,7 +126,49 @@
             </div>
         </div>
 
+        <!-- データ管理モーダル -->
+        <div class="modal-overlay" id="modal-data">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>データ管理</h3>
+                    <button class="close-button" id="btn-close-data">閉じる</button>
+                </div>
+                <div class="modal-body">
+
+                    <div class="data-section">
+                        <h4 class="data-section-title">バックアップ</h4>
+                        <p class="data-section-desc">記録した支出をCSVファイルとして書き出したり、CSVファイルから読み込んだりできます。</p>
+                        <div class="data-action-row">
+                            <button class="secondary-button" id="btn-export-csv">
+                                <span class="material-icons-round">file_download</span>
+                                CSVを書き出す
+                            </button>
+                            <label class="secondary-button" for="input-import-csv">
+                                <span class="material-icons-round">file_upload</span>
+                                CSVを読み込む
+                            </label>
+                            <input type="file" id="input-import-csv" accept=".csv,text/csv" hidden>
+                        </div>
+                        <p class="data-import-status" id="data-import-status"></p>
+                    </div>
+
+                    <div class="data-section">
+                        <h4 class="data-section-title">リセット</h4>
+                        <p class="data-section-desc">今月分の支出と予算だけを消すか、すべてのデータを消して初期状態に戻せます。元に戻せないのでご注意ください。</p>
+                        <div class="data-action-row">
+                            <button class="danger-button" id="btn-reset-month">今月のデータをリセット</button>
+                            <button class="danger-button" id="btn-reset-all">全データをリセット</button>
+                        </div>
+                    </div>
+
+                    <p class="data-storage-info" id="data-storage-info"></p>
+
+                </div>
+            </div>
+        </div>
+
     </div>
     <script src="app.js"></script>
+
 </body>
 </html>
