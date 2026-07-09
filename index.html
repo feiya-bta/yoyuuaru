@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>余裕、ある？</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1 class="logo">余裕、ある？</h1>
+            <button class="icon-button" id="btn-open-category" title="カテゴリ設定">
+                <span class="material-icons-round">settings</span>
+            </button>
+        </header>
+
+        <main class="app-content">
+
+            <!-- 予算サマリー -->
+            <div class="budget-box" id="budget-box">
+                <div class="budget-box-header">
+                    <span class="budget-box-label" id="budget-period-label">2026年7月の予算</span>
+                    <button class="budget-edit-btn" id="btn-edit-budget" title="予算を編集">
+                        <span class="material-icons-round">edit</span>
+                    </button>
+                </div>
+
+                <div class="budget-box-display" id="budget-box-display">
+                    <div class="budget-amount-row">
+                        <span id="summary-spent">0</span><span class="summary-slash">/</span><span id="summary-budget">0</span><span class="summary-unit">円</span>
+                    </div>
+                    <div class="budget-progress-track">
+                        <div class="budget-progress-fill" id="budget-progress-fill"></div>
+                    </div>
+                    <p class="budget-remaining-text" id="budget-remaining-text">予算が未設定です</p>
+                </div>
+
+                <div class="budget-box-edit" id="budget-box-edit">
+                    <input type="number" id="budget-input" placeholder="0" min="0" step="1000">
+                    <span class="unit-label">円</span>
+                    <button class="primary-button-sm" id="btn-save-budget">保存</button>
+                </div>
+            </div>
+
+            <!-- 支出タイムライン -->
+            <div class="section-title-bar">
+                <h2>支出の記録</h2>
+            </div>
+            <div class="timeline" id="expense-timeline"></div>
+
+            <button class="fab" id="fab-add-expense">
+                <span class="material-icons-round">add</span>
+            </button>
+        </main>
+
+        <!-- 支出記録・編集モーダル -->
+        <div class="modal-overlay" id="modal-expense">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="expense-modal-title">支出を記録</h3>
+                    <button class="close-button" id="btn-close-expense">閉じる</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="expense-edit-id" value="">
+                    <div class="form-group">
+                        <label>金額 (円)</label>
+                        <input type="number" id="expense-amount" placeholder="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>カテゴリ</label>
+                        <div class="select-wrapper">
+                            <select id="expense-category" class="styled-select-full"></select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>メモ（任意）</label>
+                        <input type="text" id="expense-memo" placeholder="例：スーパーで食材">
+                    </div>
+                    <div class="form-group">
+                        <label>日時</label>
+                        <div class="datetime-readonly" id="expense-datetime-display">-</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="primary-button" id="btn-save-expense" disabled>記録する</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- カテゴリ管理モーダル -->
+        <div class="modal-overlay" id="modal-category">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>カテゴリ設定</h3>
+                    <button class="close-button" id="btn-close-category">閉じる</button>
+                </div>
+                <div class="modal-body">
+                    <div class="category-manage-list" id="category-manage-list"></div>
+
+                    <button class="add-category-trigger" id="btn-show-add-category">
+                        <span class="material-icons-round">add_circle</span>
+                        新しいカテゴリを追加
+                    </button>
+
+                    <div class="category-edit-form" id="category-edit-form">
+                        <input type="hidden" id="cat-edit-id" value="">
+                        <div class="form-group">
+                            <label>カテゴリ名</label>
+                            <input type="text" id="cat-form-name" placeholder="例：交際費">
+                        </div>
+                        <div class="category-form-actions">
+                            <button class="text-cancel-button" id="btn-cancel-category">キャンセル</button>
+                            <button class="primary-button-sm" id="btn-save-category">追加する</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
