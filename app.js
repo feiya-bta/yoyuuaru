@@ -369,6 +369,50 @@ function setupEventListeners() {
         });
     }
 
+    // データ管理モーダル
+    const btnOpenData = document.getElementById("btn-open-data");
+    if (btnOpenData) {
+        btnOpenData.addEventListener("click", () => {
+            renderStorageInfo();
+            const status = document.getElementById("data-import-status");
+            if (status) status.textContent = "";
+            const modal = document.getElementById("modal-data");
+            if (modal) modal.classList.add("open");
+        });
+    }
+
+    const btnCloseData = document.getElementById("btn-close-data");
+    if (btnCloseData) {
+        btnCloseData.addEventListener("click", () => {
+            const modal = document.getElementById("modal-data");
+            if (modal) modal.classList.remove("open");
+        });
+    }
+
+    const btnExportCsv = document.getElementById("btn-export-csv");
+    if (btnExportCsv) {
+        btnExportCsv.addEventListener("click", exportExpensesAsCsv);
+    }
+
+    const inputImportCsv = document.getElementById("input-import-csv");
+    if (inputImportCsv) {
+        inputImportCsv.addEventListener("change", (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (file) importExpensesFromCsv(file);
+            inputImportCsv.value = "";
+        });
+    }
+
+    const btnResetMonth = document.getElementById("btn-reset-month");
+    if (btnResetMonth) {
+        btnResetMonth.addEventListener("click", resetCurrentMonthData);
+    }
+
+    const btnResetAll = document.getElementById("btn-reset-all");
+    if (btnResetAll) {
+        btnResetAll.addEventListener("click", resetAllData);
+    }
+
     const btnCloseCategory = document.getElementById("btn-close-category");
     if (btnCloseCategory) {
         btnCloseCategory.addEventListener("click", () => {
@@ -478,3 +522,184 @@ window.deleteExpense = function (id) {
     renderBudgetSummary();
     renderExpenseTimeline();
 };
+
+// ==========================================
+// 9. データ管理（CSV書き出し・読み込み・リセット）
+// ==========================================
+function csvEscape(value) {
+    const str = String(value === undefined || value === null ? "" : value);
+    if (/[",\n]/.test(str)) {
+        return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+}
+
+function parseCsv(text) {
+    const rows = [];
+    let row = [];
+    let field = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (inQuotes) {
+            if (char === '"') {
+                if (text[i + 1] === '"') { field += '"'; i++; }
+                else { inQuotes = false; }
+            } else {
+                field += char;
+            }
+        } else if (char === '"') {
+            inQuotes = true;
+        } else if (char === ",") {
+            row.push(field); field = "";
+        } else if (char === "\n") {
+            row.push(field); field = "";
+            rows.push(row); row = [];
+        } else if (char === "\r") {
+            // skip, \r\n handled via \n branch
+        } else {
+            field += char;
+        }
+    }
+    if (field.length > 0 || row.length > 0) {
+        row.push(field);
+        rows.push(row);
+    }
+    return rows.filter(r => r.some(c => c.trim() !== ""));
+}
+
+function exportExpensesAsCsv() {
+    const header = ["日時", "カテゴリ", "金額", "メモ"];
+    const rows = [header];
+    const sorted = [...appData.expenses].sort((a, b) => a.datetime.localeCompare(b.datetime));
+    sorted.forEach(exp => {
+        const cat = getCategoryById(exp.categoryId);
+        rows.push([exp.datetime, cat ? cat.name : "不明", exp.amount, exp.memo || ""]);
+    });
+
+    const csvContent = rows.map(r => r.map(csvEscape).join(",")).join("\r\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const now = new Date();
+    const fname = `yoyu_aru_expenses_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}.csv`;
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function importExpensesFromCsv(file) {
+    const statusEl = document.getElementById("data-import-status");
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+        const rows = parseCsv(String(e.target.result));
+        if (rows.length === 0) {
+            if (statusEl) statusEl.textContent = "読み込めるデータがありませんでした。";
+            return;
+        }
+
+        let startIndex = 0;
+        const firstCell = (rows[0][0] || "").trim().toLowerCase();
+        if (firstCell === "日時" || firstCell === "datetime" || firstCell === "date") startIndex = 1;
+
+        let added = 0;
+        let skipped = 0;
+
+        for (let i = startIndex; i < rows.length; i++) {
+            const cols = rows[i];
+            const [rawDatetime, rawCategory, rawAmount, rawMemo] = cols;
+
+            const amount = parseFloat(String(rawAmount || "").replace(/[^\d.-]/g, ""));
+            const d = new Date(rawDatetime);
+
+            if (!rawDatetime || isNaN(amount) || amount <= 0 || isNaN(d.getTime())) {
+                skipped++;
+                continue;
+            }
+
+            const categoryName = (rawCategory || "その他").trim() || "その他";
+            let category = appData.categories.find(c => c.name === categoryName);
+            if (!category) {
+                category = { id: appData.nextCategoryId, name: categoryName };
+                appData.categories.push(category);
+                appData.nextCategoryId += 1;
+            }
+
+            const isoStr = d.toISOString();
+            appData.expenses.push({
+                id: Date.now() + added,
+                amount,
+                categoryId: category.id,
+                memo: (rawMemo || "").trim(),
+                datetime: isoStr,
+                dateKey: isoStr.split("T")[0],
+                monthKey: isoStr.slice(0, 7)
+            });
+            added++;
+        }
+
+        saveData();
+        renderBudgetSummary();
+        renderExpenseTimeline();
+        renderCategorySelect();
+        renderCategoryManageList();
+        renderStorageInfo();
+
+        if (statusEl) {
+            statusEl.textContent = skipped > 0
+                ? `${added}件を読み込みました（${skipped}件はスキップしました）`
+                : `${added}件を読み込みました`;
+        }
+    };
+
+    reader.onerror = () => {
+        if (statusEl) statusEl.textContent = "ファイルの読み込みに失敗しました。";
+    };
+
+    reader.readAsText(file, "utf-8");
+}
+
+function resetCurrentMonthData() {
+    const monthKey = getCurrentMonthKey();
+    const label = getCurrentPeriodLabel().replace("の予算", "");
+    if (!confirm(`${label}の支出と予算をすべて削除します。よろしいですか？`)) return;
+
+    appData.expenses = appData.expenses.filter(e => e.monthKey !== monthKey);
+    delete appData.budget[monthKey];
+
+    saveData();
+    renderBudgetSummary();
+    renderExpenseTimeline();
+    renderBudgetInputValue();
+    renderStorageInfo();
+}
+
+function resetAllData() {
+    if (!confirm("すべてのデータ（予算・カテゴリ・支出履歴）を削除して初期状態に戻します。この操作は元に戻せません。よろしいですか？")) return;
+    if (!confirm("本当によろしいですか？もう一度確認します。")) return;
+
+    appData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+
+    saveData();
+    renderPeriodLabel();
+    renderBudgetSummary();
+    renderExpenseTimeline();
+    renderCategorySelect();
+    renderCategoryManageList();
+    renderBudgetInputValue();
+    renderStorageInfo();
+}
+
+function renderStorageInfo() {
+    const el = document.getElementById("data-storage-info");
+    if (!el) return;
+    const raw = localStorage.getItem("yoyu_aru_data") || "";
+    const sizeKb = (new Blob([raw]).size / 1024).toFixed(1);
+    el.textContent = `記録件数: ${appData.expenses.length}件 ／ 保存容量: 約${sizeKb}KB`;
+}
