@@ -5,14 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>余裕、ある？</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
 </head>
 <body>
     <div class="app-container">
         <header class="app-header">
-            <h1 class="logo">余裕、ある？</h1>
+            <div class="currency-pill" id="currency-pill" title="所持ポイント">
+                <img src="assets/money_bag.png" alt="pt" class="currency-icon">
+                <span id="currency-amount">0</span>
+            </div>
             <div class="header-actions">
+                <button class="icon-button" id="btn-open-shop" title="ショップ">
+                    <span class="material-icons-round">storefront</span>
+                </button>
                 <button class="icon-button" id="btn-open-data" title="データ管理">
                     <span class="material-icons-round">storage</span>
                 </button>
@@ -22,6 +28,16 @@
             </div>
 
         </header>
+
+        <!-- ペットルーム プレビュー（スクロールしない固定エリア） -->
+        <div class="room-section">
+            <div class="section-title-bar room-section-title">
+                <h2>マイルーム</h2>
+            </div>
+            <div class="pet-room-preview" id="pet-room-preview">
+                <div class="room-scene" id="room-scene-preview"></div>
+            </div>
+        </div>
 
         <main class="app-content">
 
@@ -153,6 +169,23 @@
                     </div>
 
                     <div class="data-section">
+                        <h4 class="data-section-title">マイルームのバックアップ</h4>
+                        <p class="data-section-desc">ポイント・所持アイテム・部屋のレイアウトをCSVで書き出し／読み込みできます。</p>
+                        <div class="data-action-row">
+                            <button class="secondary-button" id="btn-export-room-csv">
+                                <span class="material-icons-round">file_download</span>
+                                CSVを書き出す
+                            </button>
+                            <label class="secondary-button" for="input-import-room-csv">
+                                <span class="material-icons-round">file_upload</span>
+                                CSVを読み込む
+                            </label>
+                            <input type="file" id="input-import-room-csv" accept=".csv,text/csv" hidden>
+                        </div>
+                        <p class="data-import-status" id="data-import-room-status"></p>
+                    </div>
+
+                    <div class="data-section">
                         <h4 class="data-section-title">リセット</h4>
                         <p class="data-section-desc">今月分の支出と予算だけを消すか、すべてのデータを消して初期状態に戻せます。元に戻せないのでご注意ください。</p>
                         <div class="data-action-row">
@@ -164,6 +197,76 @@
                     <p class="data-storage-info" id="data-storage-info"></p>
 
                 </div>
+            </div>
+        </div>
+
+        <!-- ペット選択モーダル（初回のみ） -->
+        <div class="modal-overlay petselect-overlay" id="modal-pet-select">
+            <div class="modal-content petselect-content">
+                <div class="modal-header">
+                    <h3>お迎えするペットを選んでね</h3>
+                </div>
+                <div class="modal-body">
+                    <p class="data-section-desc">一度決めたら、ずっとあなたの部屋にいます。</p>
+                    <div class="pet-choice-row">
+                        <button class="pet-choice-card" id="choose-neko" data-pet="neko">
+                            <img src="assets/neko_awake.png" alt="ねこ">
+                            <span>ねこ</span>
+                        </button>
+                        <button class="pet-choice-card" id="choose-usagi" data-pet="usagi">
+                            <img src="assets/usagi_awake.png" alt="うさぎ">
+                            <span>うさぎ</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- デイリーログインボーナス -->
+        <div class="modal-overlay" id="modal-daily-login">
+            <div class="modal-content daily-login-content">
+                <div class="daily-login-body">
+                    <span class="material-icons-round daily-login-icon">redeem</span>
+                    <h3>ログインボーナス！</h3>
+                    <p class="daily-login-desc">今日も余裕、ある？<br>ログインポイントを受け取ろう</p>
+                    <div class="daily-login-amount"><span class="material-icons-round">toll</span><span id="daily-login-amount-value">200</span></div>
+                    <button class="primary-button" id="btn-claim-daily-login">受け取る</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ショップモーダル（フルスクリーン） -->
+        <div class="modal-overlay shop-overlay" id="modal-shop">
+            <div class="modal-content shop-content">
+                <div class="modal-header">
+                    <h3>ショップ</h3>
+                    <button class="close-button" id="btn-close-shop">閉じる</button>
+                </div>
+                <div class="shop-currency-row">
+                    <span class="material-icons-round">toll</span>
+                    <span id="shop-currency-amount">0</span>
+                    <span class="shop-currency-unit">pt 所持</span>
+                </div>
+                <div class="modal-body">
+                    <div class="shop-grid" id="shop-grid"></div>
+                    <p class="shop-empty-hint" id="shop-empty-hint" style="display:none;">すべてのアイテムを購入しました！</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ルーム編集（フルスクリーン） -->
+        <div class="room-editor" id="room-editor">
+            <div class="room-editor-toolbar">
+                <button class="icon-button room-editor-close" id="btn-close-room-editor">
+                    <span class="material-icons-round">close</span>
+                </button>
+                <span class="room-editor-title">マイルーム編集</span>
+                <span class="room-editor-hint">長押しして配置・ドラッグで移動・角をつまんで拡大縮小</span>
+            </div>
+            <div class="room-editor-canvas" id="room-editor-canvas"></div>
+            <div class="room-editor-tray" id="room-editor-tray">
+                <div class="room-editor-tray-label">持ち物</div>
+                <div class="room-editor-tray-items" id="room-editor-tray-items"></div>
             </div>
         </div>
 

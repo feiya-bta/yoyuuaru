@@ -4,7 +4,7 @@
    モノクロベース + アクセント1色 + 警告1色
 ========================================== */
 :root {
-    --bg: #f7f7f5;
+    --bg: #fef6e4;
     --surface: #ffffff;
     --ink: #191b1d;
     --ink-soft: #5c6167;
@@ -15,8 +15,13 @@
     --accent-soft: #6b7a90;
     --danger: #b0473c;
 
-    --font-display: 'Zen Maru Gothic', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+    /* 英数字は Silkscreen、日本語は M PLUS Rounded 1c にフォールバック */
+    --font-display: 'Silkscreen', 'M PLUS Rounded 1c', sans-serif;
+    --font-mono: 'Silkscreen', 'M PLUS Rounded 1c', monospace;
+
+    /* マイルームの箱（プレビュー／編集画面）で共有する高さ・横余白 */
+    --room-height: 50vh;
+    --room-side-gap: 8px;
 }
 
 * {
@@ -32,7 +37,12 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background-color: #ebeae6;
+    background-color: #1c1d1f;
+    background-image: url("assets/main_background.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     position: fixed;
     top: 0;
     left: 0;
@@ -48,7 +58,9 @@ html, body {
     width: 100%;
     max-width: 430px;
     height: 100%;
-    background-color: var(--bg);
+    background-image: "assets/main_background.jpg";
+    background-size: cover;
+    background-position: center;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -58,20 +70,13 @@ html, body {
 
 /* ヘッダー */
 .app-header {
-    background: var(--bg);
+    background: transparent;
     padding: 20px 22px 14px 22px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
     z-index: 10;
-}
-
-.logo {
-    font-size: 1.02rem;
-    font-weight: 700;
-    color: var(--ink);
-    letter-spacing: 0.01em;
 }
 
 .header-actions {
@@ -103,13 +108,40 @@ html, body {
     font-size: 19px;
 }
 
-/* メインスクロール領域 */
+/* 所持ポイント表示（ヘッダー左側） */
+.currency-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    background: rgba(46, 63, 86, 0.08);
+    border-radius: 20px;
+    color: var(--accent);
+    font-size: 0.8rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.currency-icon {
+    width: 17px;
+    height: 17px;
+    object-fit: contain;
+    display: block;
+}
+
+/* メインスクロール領域（支出の記録だけがここでスクロールする） */
 .app-content {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: 4px 22px 100px 22px;
     position: relative;
+    scrollbar-width: none;
+}
+
+.app-content::-webkit-scrollbar {
+    display: none;
 }
 
 .section-title-bar {
@@ -132,6 +164,120 @@ html, body {
     flex: 1;
     height: 1px;
     background: var(--line);
+}
+
+/* ==========================================
+   マイルーム プレビュー（スクロールしない固定エリア）
+========================================== */
+.room-section {
+    flex-shrink: 0;
+    padding: 0 22px;
+}
+
+.room-section-title {
+    margin: 14px 0 8px 0;
+}
+
+.pet-room-preview {
+    position: relative;
+    width: 100%;
+    height: var(--room-height);
+    max-height: var(--room-height);
+    border-radius: 16px;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid var(--line-strong);
+    cursor: pointer;
+    margin: 0 auto 6px auto;
+}
+
+.room-scene {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+}
+
+/* 部屋に置かれるアイテム（ペット・家具）共通 */
+.room-item {
+    position: absolute;
+    transform: translate(-50%, -50%) scale(var(--scale, 1));
+    width: 84px;
+    touch-action: none;
+    user-select: none;
+}
+
+.room-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+    pointer-events: none;
+}
+
+.room-editor-canvas .room-item {
+    cursor: grab;
+}
+
+.room-editor-canvas .room-item.selected {
+    outline: 2px dashed var(--accent);
+    outline-offset: 6px;
+    border-radius: 10px;
+}
+
+.resize-handle {
+    position: absolute;
+    right: -10px;
+    bottom: -10px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid #fff;
+    cursor: nwse-resize;
+    touch-action: none;
+}
+
+.item-controls {
+    position: absolute;
+    top: -34px;
+    left: 50%;
+    transform: translateX(-50%) scale(calc(1 / var(--scale, 1)));
+    display: flex;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.item-control-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: var(--ink);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.item-control-btn span.material-icons-round {
+    font-size: 13px;
+}
+
+.item-control-btn.confirm {
+    background: var(--accent);
+}
+
+.item-control-btn.remove {
+    background: var(--danger);
+}
+
+.item-control-btn.layer-up,
+.item-control-btn.layer-down {
+    background: var(--ink-soft);
 }
 
 /* ==========================================
@@ -796,4 +942,320 @@ html, body {
     color: var(--muted);
     text-align: center;
     font-family: var(--font-mono);
+}
+
+/* ==========================================
+   ペット選択モーダル
+========================================== */
+.petselect-overlay {
+    align-items: center;
+}
+
+.pet-choice-row {
+    display: flex;
+    gap: 14px;
+    margin-top: 8px;
+}
+
+.pet-choice-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    background: none;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.pet-choice-card:hover {
+    border-color: var(--accent);
+    background: rgba(46, 63, 86, 0.04);
+}
+
+.pet-choice-card img {
+    width: 72px;
+    height: auto;
+}
+
+.pet-choice-card span {
+    font-size: 0.78rem;
+    color: var(--ink);
+}
+
+/* ==========================================
+   デイリーログインボーナス
+========================================== */
+#modal-daily-login {
+    align-items: center;
+}
+
+.daily-login-content {
+    border-radius: 18px;
+    text-align: center;
+}
+
+.daily-login-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.daily-login-icon {
+    font-size: 40px;
+    color: var(--accent);
+}
+
+.daily-login-desc {
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    margin-bottom: 4px;
+}
+
+.daily-login-amount {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 1.6rem;
+    color: var(--accent);
+    margin-bottom: 12px;
+}
+
+/* ==========================================
+   ショップ
+========================================== */
+.shop-currency-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--accent);
+    padding-bottom: 14px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--line);
+}
+
+.shop-currency-unit {
+    font-family: var(--font-display);
+    color: var(--muted);
+    font-size: 0.68rem;
+    margin-left: 2px;
+}
+
+.shop-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 1fr;
+    gap: 12px;
+}
+
+/* すべてのカードを同じサイズに揃える。画像エリアは一番大きい家具にも
+   余裕を持たせたサイズにし、中央にアイテム、下部に価格を固定表示する */
+.shop-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    height: 168px;
+    padding: 10px 6px 8px 6px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(255,255,255,0.5);
+}
+
+.shop-card-image {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.shop-card-image img {
+    max-width: 92%;
+    max-height: 92%;
+    object-fit: contain;
+}
+
+.shop-card-price {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.shop-card-price span.material-icons-round {
+    font-size: 12px;
+}
+
+.shop-buy-btn {
+    width: 100%;
+    flex-shrink: 0;
+    padding: 6px 0;
+    border: none;
+    border-radius: 8px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 0.62rem;
+    cursor: pointer;
+    font-family: var(--font-display);
+}
+
+.shop-buy-btn:disabled {
+    background: var(--line-strong);
+    color: var(--muted);
+    cursor: not-allowed;
+}
+
+.shop-empty-hint {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    padding: 40px 0;
+}
+
+/* ショップはフルページ表示 */
+.shop-overlay {
+    align-items: stretch;
+}
+
+.shop-overlay .shop-content {
+    width: 100%;
+    max-width: 430px;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    margin: 0 auto;
+}
+
+/* ==========================================
+   ルーム編集（フルスクリーン）
+========================================== */
+.room-editor {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: var(--ink);
+    z-index: 200;
+    display: none;
+    flex-direction: column;
+}
+
+.room-editor.open {
+    display: flex;
+}
+
+.room-editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.03);
+    flex-shrink: 0;
+}
+
+.room-editor-toolbar .icon-button {
+    color: #fff;
+}
+
+.room-editor-title {
+    color: #fff;
+    font-size: 0.8rem;
+}
+
+.room-editor-hint {
+    margin-left: auto;
+    color: rgba(255,255,255,0.5);
+    font-size: 0.6rem;
+    text-align: right;
+    max-width: 140px;
+    line-height: 1.4;
+}
+
+/* プレビューの箱と全く同じ横幅・高さになるようにして、
+   編集画面とメイン画面で見た目のサイズが変わらないようにする */
+.room-editor-canvas {
+    flex-shrink: 0;
+    width: calc(100% - 44px);
+    height: var(--room-height);
+    max-height: var(--room-height);
+    margin: 12px auto 0 auto;
+    border-radius: 16px;
+    position: relative;
+    background-size: cover;
+    background-position: center;
+    overflow: hidden;
+}
+
+.room-editor-tray {
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.04);
+    padding: 10px 14px 16px 14px;
+}
+
+.room-editor-tray-label {
+    color: rgba(255,255,255,0.6);
+    font-size: 0.62rem;
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+}
+
+.room-editor-tray-items {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.tray-item {
+    position: relative;
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.tray-item img {
+    max-width: 78%;
+    max-height: 78%;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+/* タップで置けることが分かるように「＋」を右下に添える */
+.tray-item-plus {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    font-size: 16px !important;
+    color: var(--accent);
+    background: #fff;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.tray-empty-hint {
+    color: rgba(255,255,255,0.4);
+    font-size: 0.68rem;
 }
