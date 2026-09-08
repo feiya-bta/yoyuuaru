@@ -15,16 +15,11 @@
     --accent-soft: #6b7a90;
     --danger: #b0473c;
 
-    /* 英数字は Silkscreen、日本語は M PLUS Rounded 1c にフォールバック */
     --font-display: 'Silkscreen', 'M PLUS Rounded 1c', sans-serif;
     --font-mono: 'Silkscreen', 'M PLUS Rounded 1c', monospace;
 
-    /* マイルームの箱（プレビュー／編集画面）で共有する高さ。横幅は壁紙の実寸比で決める */
-    /* [修改点] vh はモバイルでキーボード表示後にリサイズされず高さが崩れることがあるため、
-       対応ブラウザでは dvh（実際に見えている高さ）を優先して使う */
-    --room-height: 58vh;
-    --room-height: 58dvh;
-    --room-ratio: 1.794; /* wallpaper.jpg の 1272 / 709 */
+    /* Maintain wallpaper ratio (1272 / 709) */
+    --room-ratio: 1.794; 
 }
 
 * {
@@ -205,12 +200,24 @@ html, body {
 .pet-room-preview {
     position: relative;
     width: 100%;
-    height: var(--room-height);
-    max-height: var(--room-height);
+    aspect-ratio: var(--room-ratio);
+    max-height: 50vh;
     border-radius: 16px;
     overflow: hidden;
     border: 1px solid var(--line-strong);
     margin: 0 auto 6px auto;
+}
+
+.room-editor-scroll-wrapper {
+    width: calc(100% - 44px);
+    margin: 12px auto 0 auto;
+    aspect-ratio: var(--room-ratio);
+    max-height: 50vh;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 16px;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
 }
 
 /* [修改点] 横向滚动容器 */
@@ -245,20 +252,9 @@ html, body {
     z-index: 0;
 }
 
-/* [修改点] 编辑器横向滚动 */
-.room-editor-scroll-wrapper {
-    width: calc(100% - 44px);
-    margin: 12px auto 0 auto;
-    height: var(--room-height);
-    overflow-x: auto;
-    overflow-y: hidden;
-    border-radius: 16px;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-}
-.room-editor-scroll-wrapper::-webkit-scrollbar {
+/* .room-editor-scroll-wrapper::-webkit-scrollbar {
     display: none;
-}
+} */
 
 /* 部屋に置かれるアイテム（ペット・家具）共通 */
 .room-item {

@@ -114,7 +114,13 @@ function renderBudgetSummary() {
     const progressFill = document.getElementById("budget-progress-fill");
     const budgetBox = document.getElementById("budget-box");
     const fab = document.getElementById("fab-add-expense");
+    const btnEditBudget = document.getElementById("btn-edit-budget");
+
     if (fab) fab.classList.toggle("needs-budget", budget <= 0);
+
+    if (btnEditBudget) {
+        btnEditBudget.style.display = budget > 0 ? "none" : "inline-flex";
+    }
 
     if (summarySpent) summarySpent.textContent = spent.toLocaleString();
     if (summaryBudget) summaryBudget.textContent = budget.toLocaleString();
@@ -285,7 +291,6 @@ function renderExpenseTimeline() {
     });
 }
 
-// 今月のカテゴリ別支出を横棒で表示する
 function renderBreakdown() {
     const list = document.getElementById("breakdown-list");
     if (!list) return;
@@ -318,7 +323,6 @@ function renderBreakdown() {
     });
 }
 
-// 記録件数に応じた簡単なレベルを表示する
 function getRoomLevel() {
     return Math.min(99, Math.floor(appData.expenses.length / 5) + 1);
 }
@@ -359,23 +363,24 @@ function validateExpenseInput() {
 // ==========================================
 // 7. イベントリスナー
 // ==========================================
-// [修改点] 画面下部に軽量トースト通知を出す
 function showToast(message) {
-    let toast = document.getElementById("app-toast");
-    if (!toast) {
-        toast = document.createElement("div");
-        toast.id = "app-toast";
-        toast.className = "app-toast";
-        document.body.appendChild(toast);
+    if (typeof petSay === "function") {
+        petSay(message);
+    } else {
+        let toast = document.getElementById("app-toast");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "app-toast";
+            toast.className = "app-toast";
+            document.body.appendChild(toast);
+        }
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(toast._hideTimer);
+        toast._hideTimer = setTimeout(() => toast.classList.remove("show"), 2600);
     }
-    toast.textContent = message;
-    toast.classList.add("show");
-    clearTimeout(toast._hideTimer);
-    toast._hideTimer = setTimeout(() => toast.classList.remove("show"), 2600);
 }
 
-// [修改点] 予算が未設定のまま記録できないようにするガード。
-// 未設定なら予算編集欄を開いてフォーカスし、falseを返して記録モーダルを開かせない。
 function ensureBudgetIsSet() {
     const monthKey = getCurrentMonthKey();
     if ((appData.budget[monthKey] || 0) > 0) return true;
@@ -383,23 +388,27 @@ function ensureBudgetIsSet() {
     const budgetBox = document.getElementById("budget-box");
     document.getElementById("budget-box-display")?.classList.add("hidden");
     document.getElementById("budget-box-edit")?.classList.add("open");
-    budgetBox?.scrollIntoView({ behavior: "smooth", block: "center" });
+    
     setTimeout(() => document.getElementById("budget-input")?.focus(), 300);
 
     budgetBox?.classList.remove("budget-required-shake");
     void budgetBox?.offsetWidth;
     budgetBox?.classList.add("budget-required-shake");
 
-    showToast("先に今月の予算を設定してください");
+    showToast(getPetLine("idle", "先に今月の予算を設定してね！")); 
     vibrate(20);
     return false;
 }
 
 function setupEventListeners() {
-    // 予算編集トグル
     const btnEditBudget = document.getElementById("btn-edit-budget");
     if (btnEditBudget) {
         btnEditBudget.addEventListener("click", () => {
+            const monthKey = getCurrentMonthKey();
+            if ((appData.budget[monthKey] || 0) > 0) {
+                showToast(getPetLine("idle", "今月の予算は確定済みのため変更できません。"));
+                return;
+            }
             renderBudgetInputValue();
             document.getElementById("budget-box-display").classList.add("hidden");
             document.getElementById("budget-box-edit").classList.add("open");
@@ -411,9 +420,22 @@ function setupEventListeners() {
         btnSaveBudget.addEventListener("click", () => {
             const budgetInput = document.getElementById("budget-input");
             if (!budgetInput) return;
-            const value = parseFloat(budgetInput.value);
             const monthKey = getCurrentMonthKey();
-            appData.budget[monthKey] = isNaN(value) || value < 0 ? 0 : value;
+
+            if ((appData.budget[monthKey] || 0) > 0) {
+                showToast(getPetLine("idle", "今月の予算は確定済みです。"));
+                document.getElementById("budget-box-display").classList.remove("hidden");
+                document.getElementById("budget-box-edit").classList.remove("open");
+                return;
+            }
+
+            const value = parseFloat(budgetInput.value);
+            if (isNaN(value) || value <= 0) {
+                showToast(getPetLine("idle", "1円以上の予算を設定してね！"));
+                return;
+            }
+
+            appData.budget[monthKey] = value;
             saveData();
             renderBudgetSummary();
             document.getElementById("budget-box-display").classList.remove("hidden");
@@ -421,14 +443,13 @@ function setupEventListeners() {
         });
     }
 
-    // 支出追加 FAB
     const fabAddExpense = document.getElementById("fab-add-expense");
     if (fabAddExpense) {
         fabAddExpense.addEventListener("click", () => {
             if (!ensureBudgetIsSet()) return;
             openExpenseModal();
         });
-}
+    }
 
     const btnCloseExpense = document.getElementById("btn-close-expense");
     if (btnCloseExpense) {
@@ -482,7 +503,6 @@ function setupEventListeners() {
         });
     }
 
-    // カテゴリ設定モーダル
     const btnOpenCategory = document.getElementById("btn-open-category");
     if (btnOpenCategory) {
         btnOpenCategory.addEventListener("click", () => {
@@ -493,7 +513,6 @@ function setupEventListeners() {
         });
     }
 
-    // データ管理モーダル
     const btnOpenData = document.getElementById("btn-open-data");
     if (btnOpenData) {
         btnOpenData.addEventListener("click", () => {
@@ -681,7 +700,6 @@ function parseCsv(text) {
             row.push(field); field = "";
             rows.push(row); row = [];
         } else if (char === "\r") {
-            // \r\n は次の \n で処理する。単独の \r（旧 Mac 改行）は改行扱いにする
             if (text[i + 1] !== "\n") {
                 row.push(field); field = "";
                 rows.push(row); row = [];
@@ -707,7 +725,7 @@ function exportExpensesAsCsv() {
     });
 
     const csvContent = rows.map(r => r.map(csvEscape).join(",")).join("\r\n");
-    const blob = new Blob(["﻿" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const now = new Date();
     const fname = `yoyu_aru_expenses_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}.csv`;
@@ -812,12 +830,19 @@ function resetAllData() {
     if (!confirm("すべてのデータ（予算・カテゴリ・支出履歴・マイルーム）を削除して初期状態に戻します。この操作は元に戻せません。よろしいですか？")) return;
     if (!confirm("本当によろしいですか？もう一度確認します。")) return;
 
+    localStorage.clear();
+
     appData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    const monthKey = getCurrentMonthKey();
+    appData.budget[monthKey] = 8888;
+
     roomData = JSON.parse(JSON.stringify(DEFAULT_ROOM_DATA));
+    roomData.points = 8888;
     petIsAsleep = Math.random() < 0.25;
 
     saveData();
     saveRoomData();
+
     renderPeriodLabel();
     renderBudgetSummary();
     renderExpenseTimeline();
@@ -828,7 +853,10 @@ function resetAllData() {
     renderCurrency();
     renderRoomPreview();
     centerRoomPreviewOnPet();
+
     if (!roomData.pet) openPetSelectModal();
+    
+    alert("初期化が完了しました！（初期予算・ポイント: 8,888）");
 }
 
 function renderStorageInfo() {
@@ -845,7 +873,6 @@ function renderStorageInfo() {
 
 const ROOM_STORAGE_KEY = "yoyu_aru_room_data";
 
-// アイテムIDから決定的に1,000〜5,000円(100円刻み)の価格を出す
 const FURNITURE_CATALOG = [
     { id: "nezumi_karakuri", img: "assets/nezumi_karakuri.png", price: 800 },
     { id: "toy_car_red", img: "assets/toy_car_red.png", price: 800 },
@@ -875,11 +902,8 @@ const FURNITURE_CATALOG = [
     { id: "fishtank", img: "assets/fishtank.png", price: 4000 }
 ];
 
-// ペット自身のz-index（固定値）。家具はこれより大きい/小さい値を取ることで
-// 「ペットの前に置く／後ろに置く」を自由に行き来できるようにする。
 const PET_Z = 25;
 
-// 動画（GIF）がある家具・ペットはそちらを優先して表示する
 const ANIMATED_FURNITURE_GIF = {
     clock: "assets/clock.gif",
     danro: "assets/danro.gif",
@@ -894,13 +918,9 @@ const PET_SLEEP_IMG = {
     usagi: "assets/usagi_sleep.gif"
 };
 
-// 床ライン（縦位置の固定値）。ペットはこのラインに足を着けたまま左右だけ動かす
 const PET_FLOOR_Y = 82;
-
-// ペットが自発的に近づいて遊ぶ「おもちゃ」枠
 const TOY_ITEM_IDS = ["nezumi_karakuri", "toy_car_red", "wool_red", "toy_car", "toy_ball", "neko_toy"];
 
-// ペットの簡単なチャット（吹き出し）用のセリフ
 const PET_CHAT = {
     idle: ["ゆとり、ある？", "今日も一緒にがんばろう", "おかえり！今日もおつかれさま", "記録できてえらい", "小さな節約も未来の余裕につながる"],
     under: ["まだ予算に余裕がある", "この調子、いい感じ", "目標に向かってコツコツいこう", "無理しない節約がいちばん"],
@@ -908,10 +928,10 @@ const PET_CHAT = {
     over: ["予算オーバーだ", "いったん深呼吸して、次の記録から整えていこう", "大丈夫、ここから立て直せばいい"]
 };
 
-let roomDragMoved = false; // 部屋をマウスでドラッグした直後にタップ判定を誤らないようにする
+let roomDragMoved = false;
 
 const DEFAULT_ROOM_DATA = {
-    points: 0,
+    points: 8888,
     lastLoginDate: null,
     pet: null,
     ownedItemIds: [],
@@ -919,9 +939,9 @@ const DEFAULT_ROOM_DATA = {
 };
 
 let roomData = loadRoomData();
-let petIsAsleep = Math.random() < 0.25; // 起動時、まれに寝ていることもある（以降はランダムなお昼寝イベントで切り替わる）
-let petLifeLoopsStarted = false; // 待機・お昼寝・徘徊ループの多重起動防止
-let roomEditorSelectedUid = null; // 現在ルーム編集中に選択中の要素uid ('pet'固定 or 家具uid)
+let petIsAsleep = Math.random() < 0.25;
+let petLifeLoopsStarted = false;
+let roomEditorSelectedUid = null;
 
 function loadRoomData() {
     let data;
@@ -936,10 +956,8 @@ function loadRoomData() {
     if (data.pet && !data.pet.name) data.pet.name = data.pet.type === "usagi" ? "ぴょん" : "ねこ";
     if (!data.placedItems) data.placedItems = [];
     
-    // ペットは常に床ラインへ固定する（縦は動かさない）
     if (data.pet) data.pet.y = PET_FLOOR_Y;
 
-    // 旧データは横位置を 0〜200 の幅で保存していたので、0〜100 の座標系へ移行する
     if (data.pet && typeof data.pet.x === "number" && data.pet.x > 100) data.pet.x = data.pet.x / 2;
     data.placedItems.forEach(it => {
         if (typeof it.x === "number" && it.x > 100) it.x = it.x / 2;
@@ -966,10 +984,8 @@ function randomBetween(min, max) {
 }
 
 // ==========================================
-// ペットの「活人感」演出（待機・お昼寝・徘徊・気分・リアクション）
+// ペットの行動ループ & 演出
 // ==========================================
-
-// [修改点] 取消徘徊循环，只保留睡眠和伸展
 function startPetLifeLoops() {
     if (petLifeLoopsStarted) return;
     petLifeLoopsStarted = true;
@@ -980,11 +996,10 @@ function startPetLifeLoops() {
     scheduleNextWander();
 }
 
-// 時刻固定ではなく、ランダムなタイミングでふらっと寝たり起きたりする
 function scheduleNextSleepToggle() {
     const delayMs = petIsAsleep
-        ? randomBetween(15000, 40000)   // お昼寝時間: 15〜40秒
-        : randomBetween(30000, 90000);  // 起きてる時間: 30〜90秒
+        ? randomBetween(15000, 40000)
+        : randomBetween(30000, 90000);
     setTimeout(() => {
         petIsAsleep = !petIsAsleep;
         updatePetSleepVisual();
@@ -1006,7 +1021,6 @@ function updatePetSleepVisual() {
     });
 }
 
-// 起きている間、たまにグーッと伸びをする
 function scheduleNextStretch() {
     const delayMs = randomBetween(14000, 32000);
     setTimeout(() => {
@@ -1018,7 +1032,7 @@ function scheduleNextStretch() {
 function triggerPetStretch() {
     document.querySelectorAll(".pet-item").forEach(el => {
         el.classList.remove("stretching");
-        void el.offsetWidth; // 同じアニメーションを再トリガーするための強制リフロー
+        void el.offsetWidth;
         el.classList.add("stretching");
     });
 }
@@ -1030,7 +1044,7 @@ function triggerPetHop(silent = false) {
     }
     document.querySelectorAll(".pet-item").forEach(el => {
         el.classList.remove("hopping");
-        void el.offsetWidth; // 同じアニメーションを再トリガーするための強制リフロー
+        void el.offsetWidth;
         el.classList.add("hopping");
         const img = el.querySelector("img");
         const onEnd = (e) => {
@@ -1042,7 +1056,6 @@ function triggerPetHop(silent = false) {
     });
 }
 
-// 起きている間、近くにおもちゃがあれば近づいて跳ねて遊ぶ
 function scheduleNextToyPlay() {
     const delayMs = randomBetween(12000, 26000);
     setTimeout(() => {
@@ -1061,7 +1074,7 @@ function tryPlayWithToy() {
         .map(it => ({ x: it.x, d: Math.abs(it.x - roomData.pet.x) }));
     if (toys.length === 0) return;
     toys.sort((a, b) => a.d - b.d);
-    if (toys[0].d > 28) return; // 近くにおもちゃがなければ何もしない
+    if (toys[0].d > 28) return;
 
     const curX = roomData.pet.x;
     const targetX = Math.max(10, Math.min(90, toys[0].x));
@@ -1074,7 +1087,6 @@ function tryPlayWithToy() {
     spawnPetReaction("sports_esports");
 }
 
-// 起きている間、たまに床の上を左右に歩き回る
 function scheduleNextWander() {
     const delayMs = randomBetween(8000, 18000);
     setTimeout(() => {
@@ -1098,7 +1110,6 @@ function wanderPetInPreview() {
     saveRoomData();
 }
 
-// 当月の予算消化率を返す（予算未設定ならnull＝気分に影響させない）
 function getCurrentBudgetRatioOrNull() {
     const monthKey = getCurrentMonthKey();
     const budget = appData.budget[monthKey] || 0;
@@ -1109,7 +1120,6 @@ function getCurrentBudgetRatioOrNull() {
     return spent / budget;
 }
 
-// 予算消化率からペットの気分を計算し、見た目（フィルター・頭上バッジ）に反映する
 function refreshPetMood() {
     const ratio = getCurrentBudgetRatioOrNull();
     const isOver = ratio !== null && ratio >= 1;
@@ -1133,7 +1143,6 @@ function refreshPetMood() {
     });
 }
 
-// 記帳した瞬間など、部屋にふわっと小さいリアクションを飛ばす
 function spawnPetReaction(iconName) {
     const scene = document.getElementById("room-scene-preview");
     if (!scene) return;
@@ -1142,14 +1151,13 @@ function spawnPetReaction(iconName) {
     reaction.innerHTML = `<span class="material-icons-round">${iconName}</span>`;
     scene.appendChild(reaction);
     reaction.addEventListener("animationend", () => reaction.remove());
-    setTimeout(() => reaction.remove(), 1500); // アニメーション未対応環境向けの保険
+    setTimeout(() => reaction.remove(), 1500);
 }
 
 function randomPick(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// 予算消化率に応じてペットのセリフを選ぶ
 function pickPetLine(ratio) {
     let line;
     if (ratio === null) line = randomPick(PET_CHAT.idle);
@@ -1159,7 +1167,6 @@ function pickPetLine(ratio) {
     return getPetLine("idle", line);
 }
 
-// ペットの吹き出しを部屋に表示する（簡単なチャット演出）
 function getPetGobi() { return roomData.pet?.type === "usagi" ? "ぴょん" : "にゃ～"; }
 function getPetLine(kind, text) {
     const clean = String(text || "").replace(/(にゃ～|にゃ|ぴょん)[！!。．]?$/u, "");
@@ -1176,7 +1183,6 @@ function petSay(text) {
     box._hideTimer = setTimeout(() => box.classList.remove("show"), 4200);
 }
 
-// 時間帯に応じたあいさつ
 function getTimeGreeting() {
     const h = new Date().getHours();
     if (h < 5) return getPetLine("idle", "遅い時間だね。もう寝よう？");
@@ -1189,7 +1195,6 @@ function localDateKeyOf(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// 連続で記録できている日数
 function getRecordingStreak() {
     const days = new Set();
     appData.expenses.forEach(e => {
@@ -1198,7 +1203,7 @@ function getRecordingStreak() {
     });
     let streak = 0;
     const cur = new Date();
-    if (!days.has(localDateKeyOf(cur))) cur.setDate(cur.getDate() - 1); // 今日未記録なら昨日から数える
+    if (!days.has(localDateKeyOf(cur))) cur.setDate(cur.getDate() - 1);
     while (days.has(localDateKeyOf(cur))) {
         streak++;
         cur.setDate(cur.getDate() - 1);
@@ -1206,7 +1211,6 @@ function getRecordingStreak() {
     return streak;
 }
 
-// ペットへの一言に対する簡単な返答（キーワードで切り替える）
 function petChatReply(text) {
     const t = (text || "").trim();
     if (!t) return getPetLine("idle", "なにか話したいのかな？");
@@ -1218,7 +1222,6 @@ function petChatReply(text) {
     return randomPick([getPetLine("idle", "なるほど！"), getPetLine("idle", "そうなんだ！"), getPetLine("idle", "うん、聞いてるよ！"), getPetLine("idle", "ふむふむ…")]);
 }
 
-// 起きている間、たまにひとこと話す
 function scheduleNextPetComment() {
     const delayMs = randomBetween(30000, 60000);
     setTimeout(() => {
@@ -1229,7 +1232,6 @@ function scheduleNextPetComment() {
     }, delayMs);
 }
 
-// マウスで部屋を直接ドラッグして横に動かせるようにする（タッチはネイティブスクロール）
 function setupRoomDragToScroll() {
     const wrapper = document.querySelector(".room-scroll-wrapper");
     if (!wrapper) return;
@@ -1327,7 +1329,7 @@ function confirmPetName() {
 }
 
 // ==========================================
-// デイリーログインボーナス（1日1回・初回起動時）
+// デイリーログインボーナス
 // ==========================================
 function maybeShowDailyLoginBonus() {
     const today = todayDateKey();
@@ -1359,7 +1361,7 @@ function renderCurrency() {
 }
 
 // ==========================================
-// ルームプレビュー（メイン画面の小さい箱）
+// ルームプレビュー
 // ==========================================
 function renderRoomScene(container, interactive) {
     if (!container) return;
@@ -1381,7 +1383,6 @@ function renderRoomPreview() {
     renderRoomScene(document.getElementById("room-scene-preview"), false);
 }
 
-// 初回表示時にペットが視界の中央へ来るように、プレビューの横スクロール位置を合わせる
 function centerRoomPreviewOnPet() {
     const scene = document.getElementById("room-scene-preview");
     const wrapper = scene ? scene.parentElement : null;
@@ -1391,7 +1392,6 @@ function centerRoomPreviewOnPet() {
     wrapper.scrollLeft = Math.max(0, target);
 }
 
-// 睡眠 GIF を先読みしておき、初めて寝たときにチラつかせない
 function preloadPetSleepGif() {
     if (!roomData.pet) return;
     const src = PET_SLEEP_IMG[roomData.pet.type];
@@ -1400,8 +1400,6 @@ function preloadPetSleepGif() {
     img.src = src;
 }
 
-// [修改点] 画像が読み込み失敗（＝表示が壊れる）したときの保険。
-// 一度だけキャッシュを避けて再読み込みし、それでもダメならフォールバック画像に切り替える。
 function attachImgRetryFallback(imgEl, fallbackSrc) {
     imgEl.dataset.retried = "0";
     imgEl.addEventListener("error", function onImgError() {
@@ -1525,7 +1523,6 @@ function placeItemToCenter(uid) {
     selectRoomItem(uid);
 }
 
-// [修改点] 适配新的百分比逻辑
 function makeItemDraggable(el, uid, canvas) {
     let dragging = false;
     let startX, startY, origLeftPct, origTopPct;
@@ -1669,17 +1666,26 @@ function persistItemScale(uid, scale) {
     saveRoomData();
 }
 
-// 前面(+1)／背面(-1)へ重なり順を1段階ずらす
-function changeItemLayer(uid, direction) {
+// レイヤー操作 (1段階ずつ切り替え)
+function changeItemLayer(uid, delta) {
     if (uid === "pet") return;
+
     const item = roomData.placedItems.find(it => it.uid === uid);
     if (!item) return;
-    item.z = Math.max(1, Math.min(50, (item.z || 1) + direction));
+
+    const currentZ = item.z !== undefined ? item.z : 1;
+    item.z = Math.min(50, Math.max(1, currentZ + delta));
+
     saveRoomData();
+    applyItemZIndex(uid, item.z);
+}
+
+function applyItemZIndex(uid, z) {
     const el = document.querySelector(`#room-editor-canvas .room-item[data-uid="${uid}"]`);
     if (el) {
-        el.style.zIndex = item.z;
-        updateLayerToggleIcon(el, item);
+        el.style.zIndex = z;
+        const item = roomData.placedItems.find(it => it.uid === uid);
+        if (item) updateLayerToggleIcon(el, item);
     }
 }
 
@@ -1793,7 +1799,7 @@ function exportRoomAsCsv() {
     });
 
     const csvContent = rows.map(r => r.map(csvEscape).join(",")).join("\r\n");
-    const blob = new Blob(["﻿" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const now = new Date();
     const fname = `yoyu_aru_room_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}.csv`;
@@ -1862,7 +1868,6 @@ function setupRoomEventListeners() {
         document.getElementById("modal-daily-login")?.classList.remove("open");
     });
 
-    // ペットへの一言チャット
     const petChatInput = document.getElementById("pet-chat-input");
     const petChatSend = document.getElementById("pet-chat-send");
     const sendPetChat = () => {
@@ -1883,13 +1888,11 @@ function setupRoomEventListeners() {
         document.getElementById("modal-shop")?.classList.remove("open");
     });
 
-    // 部屋の編集は「タップで入る」のではなく、独立した編集ボタンから行う
     document.getElementById("btn-open-room-editor")?.addEventListener("click", openRoomEditor);
     document.getElementById("btn-close-room-editor")?.addEventListener("click", closeRoomEditor);
 
-    // 部屋のプレビュー自体をタップしたときは、編集ではなく「ペットをかまう」ちょっとした反応にする
     document.getElementById("pet-room-preview")?.addEventListener("click", () => {
-        if (roomDragMoved) return; // ドラッグ直後はタップとみなさない
+        if (roomDragMoved) return;
         if (!roomData.pet || petIsAsleep) return;
         triggerPetHop();
         if (Math.random() < 0.6) spawnPetReaction("favorite");
