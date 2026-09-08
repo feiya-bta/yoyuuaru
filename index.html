@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>余裕、ある？</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap">
@@ -26,21 +26,37 @@
                     <span class="material-icons-round">settings</span>
                 </button>
             </div>
-
         </header>
 
-        <!-- ペットルーム プレビュー（スクロールしない固定エリア） -->
+        <!-- ペットルーム プレビュー -->
         <div class="room-section">
             <div class="section-title-bar room-section-title">
                 <h2>マイルーム</h2>
+                <span class="room-level" id="room-level">Lv.1</span>
+                <button class="room-edit-btn" id="btn-open-room-editor" title="部屋を編集">
+                    <span class="material-icons-round">edit</span>編集
+                </button>
             </div>
             <div class="pet-room-preview" id="pet-room-preview">
-                <div class="room-scene" id="room-scene-preview"></div>
+
+                <!-- [修改点] RPG風メッセージウィンドウ：部屋画面の一番上に固定（スクロールしても動かない） -->
+                <div class="room-dialogue-box" id="room-dialogue-box">
+                    <p id="room-dialogue-text"></p>
+                </div>
+
+                <!-- [修改点] 添加横向滚动容器 -->
+                <div class="room-scroll-wrapper">
+                    <div class="room-scene" id="room-scene-preview"></div>
+                </div>
+
+            </div>
+            <div class="pet-chat-bar">
+                <input type="text" class="pet-chat-input" id="pet-chat-input" placeholder="ペットに話しかける" maxlength="40" autocomplete="off">
+                <button class="pet-chat-send" id="pet-chat-send" title="送信"><span class="material-icons-round">send</span></button>
             </div>
         </div>
 
         <main class="app-content">
-
             <!-- 予算サマリー -->
             <div class="budget-box" id="budget-box">
                 <div class="budget-box-header">
@@ -49,7 +65,6 @@
                         <span class="material-icons-round">edit</span>
                     </button>
                 </div>
-
                 <div class="budget-box-display" id="budget-box-display">
                     <div class="budget-amount-row">
                         <span id="summary-spent">0</span><span class="summary-slash">/</span><span id="summary-budget">0</span><span class="summary-unit">円</span>
@@ -59,12 +74,19 @@
                     </div>
                     <p class="budget-remaining-text" id="budget-remaining-text">予算が未設定です</p>
                 </div>
-
                 <div class="budget-box-edit" id="budget-box-edit">
                     <input type="number" id="budget-input" placeholder="0" min="0" step="1000">
                     <span class="unit-label">円</span>
                     <button class="primary-button-sm" id="btn-save-budget">保存</button>
                 </div>
+            </div>
+
+            <!-- 今月の内訳（カテゴリ別） -->
+            <div class="breakdown-box" id="breakdown-box">
+                <div class="section-title-bar breakdown-title">
+                    <h2>今月の内訳</h2>
+                </div>
+                <div class="breakdown-list" id="breakdown-list"></div>
             </div>
 
             <!-- 支出タイムライン -->
@@ -121,12 +143,10 @@
                 </div>
                 <div class="modal-body">
                     <div class="category-manage-list" id="category-manage-list"></div>
-
                     <button class="add-category-trigger" id="btn-show-add-category">
                         <span class="material-icons-round">add_circle</span>
                         新しいカテゴリを追加
                     </button>
-
                     <div class="category-edit-form" id="category-edit-form">
                         <input type="hidden" id="cat-edit-id" value="">
                         <div class="form-group">
@@ -150,7 +170,6 @@
                     <button class="close-button" id="btn-close-data">閉じる</button>
                 </div>
                 <div class="modal-body">
-
                     <div class="data-section">
                         <h4 class="data-section-title">バックアップ</h4>
                         <p class="data-section-desc">記録した支出をCSVファイルとして書き出したり、CSVファイルから読み込んだりできます。</p>
@@ -167,7 +186,6 @@
                         </div>
                         <p class="data-import-status" id="data-import-status"></p>
                     </div>
-
                     <div class="data-section">
                         <h4 class="data-section-title">マイルームのバックアップ</h4>
                         <p class="data-section-desc">ポイント・所持アイテム・部屋のレイアウトをCSVで書き出し／読み込みできます。</p>
@@ -184,7 +202,6 @@
                         </div>
                         <p class="data-import-status" id="data-import-room-status"></p>
                     </div>
-
                     <div class="data-section">
                         <h4 class="data-section-title">リセット</h4>
                         <p class="data-section-desc">今月分の支出と予算だけを消すか、すべてのデータを消して初期状態に戻せます。元に戻せないのでご注意ください。</p>
@@ -193,9 +210,7 @@
                             <button class="danger-button" id="btn-reset-all">全データをリセット</button>
                         </div>
                     </div>
-
                     <p class="data-storage-info" id="data-storage-info"></p>
-
                 </div>
             </div>
         </div>
@@ -207,7 +222,7 @@
                     <h3>お迎えするペットを選んでね</h3>
                 </div>
                 <div class="modal-body">
-                    <p class="data-section-desc">一度決めたら、ずっとあなたの部屋にいます。</p>
+                    <p class="data-section-desc">一緒に貯金をがんばる相棒を選ぼう。</p>
                     <div class="pet-choice-row">
                         <button class="pet-choice-card" id="choose-neko" data-pet="neko">
                             <img src="assets/neko_awake.png" alt="ねこ">
@@ -218,6 +233,26 @@
                             <span>うさぎ</span>
                         </button>
                     </div>
+                    <p class="pet-selection-hint" id="pet-selection-hint">ペットを選ぶと名前をつけられるよ</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ペットの名前設定（初回のみ） -->
+        <div class="modal-overlay petname-overlay" id="modal-pet-name">
+            <div class="modal-content petname-content">
+                <div class="petname-hero">
+                    <div class="petname-icon-wrap">
+                        <img id="petname-preview-img" src="assets/neko_awake.png" alt="ペット">
+                    </div>
+                    <span class="petname-kicker">YOUR LITTLE BUDDY</span>
+                    <h3 id="petname-title">ねこに名前をつけよう</h3>
+                    <p>これから毎日、家計管理を応援してくれるよ。</p>
+                </div>
+                <div class="modal-body">
+                    <label class="petname-label" for="pet-name-input">名前</label>
+                    <input type="text" id="pet-name-input" class="pet-name-input" maxlength="12" placeholder="例：もち" autocomplete="off">
+                    <button class="primary-button petname-confirm" id="btn-confirm-pet-name">この名前にする</button>
                 </div>
             </div>
         </div>
@@ -231,6 +266,7 @@
                     <p class="daily-login-desc">今日も余裕、ある？<br>ログインポイントを受け取ろう</p>
                     <div class="daily-login-amount"><span class="material-icons-round">toll</span><span id="daily-login-amount-value">200</span></div>
                     <button class="primary-button" id="btn-claim-daily-login">受け取る</button>
+                    <button class="daily-login-later" id="btn-later-daily-login">あとで</button>
                 </div>
             </div>
         </div>
@@ -261,9 +297,12 @@
                     <span class="material-icons-round">close</span>
                 </button>
                 <span class="room-editor-title">マイルーム編集</span>
-                <span class="room-editor-hint">長押しして配置・ドラッグで移動・角をつまんで拡大縮小</span>
+                <span class="room-editor-hint">横にスワイプして部屋全体を確認。ドラッグで移動。</span>
             </div>
-            <div class="room-editor-canvas" id="room-editor-canvas"></div>
+            <!-- [修改点] 编辑器也支持横向滚动 -->
+            <div class="room-editor-scroll-wrapper">
+                <div class="room-editor-canvas" id="room-editor-canvas"></div>
+            </div>
             <div class="room-editor-tray" id="room-editor-tray">
                 <div class="room-editor-tray-label">持ち物</div>
                 <div class="room-editor-tray-items" id="room-editor-tray-items"></div>
@@ -272,6 +311,5 @@
 
     </div>
     <script src="app.js"></script>
-
 </body>
 </html>

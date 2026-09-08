@@ -19,9 +19,12 @@
     --font-display: 'Silkscreen', 'M PLUS Rounded 1c', sans-serif;
     --font-mono: 'Silkscreen', 'M PLUS Rounded 1c', monospace;
 
-    /* マイルームの箱（プレビュー／編集画面）で共有する高さ・横余白 */
-    --room-height: 50vh;
-    --room-side-gap: 8px;
+    /* マイルームの箱（プレビュー／編集画面）で共有する高さ。横幅は壁紙の実寸比で決める */
+    /* [修改点] vh はモバイルでキーボード表示後にリサイズされず高さが崩れることがあるため、
+       対応ブラウザでは dvh（実際に見えている高さ）を優先して使う */
+    --room-height: 58vh;
+    --room-height: 58dvh;
+    --room-ratio: 1.794; /* wallpaper.jpg の 1272 / 709 */
 }
 
 * {
@@ -42,7 +45,6 @@ html, body {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    background-attachment: fixed;
     position: fixed;
     top: 0;
     left: 0;
@@ -56,11 +58,8 @@ html, body {
     left: 50%;
     transform: translateX(-50%);
     width: 100%;
-    max-width: 430px;
+    max-width: 640px;
     height: 100%;
-    background-image: "assets/main_background.jpg";
-    background-size: cover;
-    background-position: center;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -71,7 +70,7 @@ html, body {
 /* ヘッダー */
 .app-header {
     background: transparent;
-    padding: 20px 22px 14px 22px;
+    padding: calc(20px + env(safe-area-inset-top)) 22px 14px 22px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -135,7 +134,7 @@ html, body {
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 4px 22px 100px 22px;
+    padding: 4px 22px calc(100px + env(safe-area-inset-bottom)) 22px;
     position: relative;
     scrollbar-width: none;
 }
@@ -167,7 +166,7 @@ html, body {
 }
 
 /* ==========================================
-   マイルーム プレビュー（スクロールしない固定エリア）
+   マイルーム プレビュー（横スクロール対応）
 ========================================== */
 .room-section {
     flex-shrink: 0;
@@ -178,6 +177,31 @@ html, body {
     margin: 14px 0 8px 0;
 }
 
+.room-edit-btn {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 5px 11px 5px 8px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink-soft);
+    border-radius: 20px;
+    font-size: 0.62rem;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.room-edit-btn .material-icons-round {
+    font-size: 13px;
+}
+
+.room-edit-btn:hover {
+    background: rgba(0,0,0,0.05);
+    color: var(--ink);
+}
+
 .pet-room-preview {
     position: relative;
     width: 100%;
@@ -185,27 +209,62 @@ html, body {
     max-height: var(--room-height);
     border-radius: 16px;
     overflow: hidden;
-    background-size: cover;
-    background-position: center;
     border: 1px solid var(--line-strong);
-    cursor: pointer;
     margin: 0 auto 6px auto;
 }
 
-.room-scene {
-    position: relative;
+/* [修改点] 横向滚动容器 */
+.room-scroll-wrapper {
     width: 100%;
     height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none; /* Firefox */
+    cursor: grab;
+    user-select: none;
+}
+.room-scroll-wrapper::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+.room-scroll-wrapper.is-dragging {
+    cursor: grabbing;
+}
+
+/* 房间：一张完整图，横向加宽（约 2:1）并保留地板/家具，只轻微裁掉顶部天花板 */
+.room-scene {
+    position: relative;
+    width: 143%;
+    height: 100%;
+    flex-shrink: 0;
+    background-image: url("assets/wallpaper.jpg");
     background-size: cover;
-    background-position: center;
+    background-repeat: no-repeat;
+    background-position: center bottom;
+    z-index: 0;
+}
+
+/* [修改点] 编辑器横向滚动 */
+.room-editor-scroll-wrapper {
+    width: calc(100% - 44px);
+    margin: 12px auto 0 auto;
+    height: var(--room-height);
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 16px;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+}
+.room-editor-scroll-wrapper::-webkit-scrollbar {
+    display: none;
 }
 
 /* 部屋に置かれるアイテム（ペット・家具）共通 */
 .room-item {
     position: absolute;
-    transform: translate(-50%, -50%) scale(var(--scale, 1));
+    transform: translate(-50%, -50%) scale(var(--scale, 1)) scaleX(var(--flip, 1));
     width: 84px;
-    touch-action: none;
     user-select: none;
 }
 
@@ -216,8 +275,213 @@ html, body {
     pointer-events: none;
 }
 
+/* [修改点] 宠物只做左右移动，取消上下；并且让它以脚底为轴心 */
+#room-scene-preview .pet-item {
+    transition: left 1.6s ease-in-out;
+    transform-origin: 50% 100%; 
+}
+
+/* ==========================================
+   ペットの「活人感」演出
+========================================== */
+.pet-item img {
+    transform-origin: 50% 92%;
+    animation: petIdleSway var(--idle-dur, 4.2s) ease-in-out infinite;
+}
+
+.pet-item.is-sleeping img {
+    animation: petSleepBreathe var(--idle-dur, 3.6s) ease-in-out infinite;
+}
+
+.pet-item.stretching img {
+    animation: petStretch 0.55s ease-in-out;
+}
+
+/* 予算オーバー気味のときは、心なしか元気がない見た目に */
+.pet-item.mood-warn img {
+    filter: saturate(0.82);
+}
+
+.pet-item.mood-over img {
+    filter: saturate(0.5) brightness(0.92);
+    --idle-dur: 7s;
+}
+
+@keyframes petIdleSway {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(-1.6deg) scale(1.012); }
+    50% { transform: rotate(0deg) scale(1.03); }
+    75% { transform: rotate(1.6deg) scale(1.012); }
+}
+
+@keyframes petSleepBreathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.025); }
+}
+
+@keyframes petStretch {
+    0% { transform: scale(1, 1) rotate(0deg); }
+    35% { transform: scale(1.1, 0.9) rotate(-3deg); }
+    65% { transform: scale(0.95, 1.07) rotate(3deg); }
+    100% { transform: scale(1, 1) rotate(0deg); }
+}
+
+/* ペットが床からぴょんと跳ねる */
+.pet-item.hopping img {
+    animation: petHop 0.55s ease-in-out;
+}
+@keyframes petHop {
+    0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+    30% { transform: translateY(-24%) rotate(-2deg) scale(1.04); }
+    55% { transform: translateY(-8%) rotate(2deg) scale(1.01); }
+}
+
+/* 予算の状態バッジ（ペット右肩に出す小さいアイコン） */
+.mood-badge {
+    position: absolute;
+    top: -2px;
+    right: -4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    color: var(--danger);
+}
+
+.mood-badge .material-icons-round {
+    font-size: 12px;
+}
+
+.mood-badge.hidden {
+    display: none;
+}
+
+/* 記帳した瞬間・部屋をタップした瞬間に飛ばすリアクション */
+.pet-reaction {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    color: var(--accent);
+    font-size: 20px;
+    pointer-events: none;
+    animation: floatReaction 1s ease-out forwards;
+    z-index: 80;
+}
+
+@keyframes floatReaction {
+    0% { transform: translate(-50%, -35%) scale(0.5); opacity: 0; }
+    20% { opacity: 1; transform: translate(-50%, -65%) scale(1); }
+    100% { transform: translate(-50%, -145%) scale(1.05); opacity: 0; }
+}
+
+/* [修改点] RPG風メッセージウィンドウ：部屋画面の上部に固定表示（ドラクエ/Aveyond風） */
+.room-dialogue-box {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    z-index: 100;
+    box-sizing: border-box;
+    background: rgba(18, 22, 36, 0.92);
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 2px #12162a, 0 6px 16px rgba(0,0,0,0.35);
+    border-radius: 3px;
+    padding: 10px 14px;
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.room-dialogue-box.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.room-dialogue-box p {
+    margin: 0;
+    font-family: 'Silkscreen', 'M PLUS Rounded 1c', sans-serif;
+    font-size: 0.66rem;
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+    color: #fff;
+    text-align: left;
+}
+
+/* ペットの吹き出し：ペット自身に固定して、移動しても一緒についてくる */
+.pet-speech {
+    position: absolute; left: 50%; bottom: calc(100% + 10px);
+    transform: translate(-50%, 0) scale(calc(1 / var(--scale, 1)));
+    transform-origin: center bottom; width: max-content; max-width: 220px;
+    background: #fff; color: var(--ink); padding: 9px 13px; border-radius: 15px;
+    border: 1px solid rgba(25,27,29,0.08); font-size: 0.72rem; line-height: 1.5;
+    text-align: center; white-space: normal; box-shadow: 0 7px 20px rgba(0,0,0,0.14);
+    pointer-events: none; z-index: 9999; opacity: 0;
+}
+.pet-speech.show { opacity: 1; animation: speechPop 0.22s ease-out; }
+.pet-speech::after { content: ""; position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%); border: 7px solid transparent; border-top-color: #fff; border-bottom: none; }
+.pet-name-tag { position: absolute; left: 50%; bottom: calc(100% + 2px); transform: translate(-50%, -34px) scaleX(var(--flip, 1)) scale(calc(1 / var(--scale, 1))); transform-origin: center bottom; background: rgba(25,27,29,0.82); color: #fff; border-radius: 10px; padding: 3px 7px; font-size: 0.54rem; line-height: 1; white-space: nowrap; pointer-events: none; z-index: 9998; }
+.pet-name-tag.hidden { display: none; }
+@keyframes speechPop { from { opacity: 0; transform: translate(-50%, 8px) scale(calc(1 / var(--scale, 1))); } to { opacity: 1; transform: translate(-50%, 0) scale(calc(1 / var(--scale, 1))); } }
+.pet-selection-hint { text-align: center; color: var(--muted); font-size: 0.65rem; margin-top: 14px; }
+.petname-content { max-width: 430px; }
+.petname-hero { text-align: center; padding: 24px 24px 8px; }
+.petname-icon-wrap { width: 88px; height: 88px; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; background: rgba(46,63,86,0.06); border-radius: 24px; }
+.petname-icon-wrap img { width: 70px; height: 70px; object-fit: contain; }
+.petname-kicker { display: block; color: var(--muted); font-size: 0.52rem; letter-spacing: 0.16em; margin-bottom: 6px; }
+.petname-hero h3 { font-size: 1rem; color: var(--ink); margin-bottom: 7px; }
+.petname-hero p { color: var(--ink-soft); font-size: 0.65rem; line-height: 1.6; }
+.petname-label { display: block; font-size: 0.64rem; color: var(--ink-soft); margin-bottom: 6px; }
+.pet-name-input { width: 100%; border: 1px solid var(--line-strong); border-radius: 12px; padding: 12px 13px; background: #fff; color: var(--ink); outline: none; font-size: 0.9rem; }
+.pet-name-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(46,63,86,0.08); }
+.petname-confirm { width: 100%; margin-top: 12px; }
+
+/* ==========================================
+   家具の環境アニメーション
+   ※ clock / danro / fishbowl は GIF が動くので CSS 側の演出は外した
+========================================== */
+.furniture-item[data-item-id="fishtank"]::after {
+    content: "";
+    position: absolute;
+    inset: 6% 4%;
+    background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,0.4) 45%, transparent 70%);
+    background-size: 250% 250%;
+    animation: waterShimmer 3.6s linear infinite;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    border-radius: 8px;
+}
+@keyframes waterShimmer {
+    0% { background-position: 120% -20%; }
+    100% { background-position: -20% 120%; }
+}
+
+.furniture-item[data-item-id="hang_plant"] img {
+    transform-origin: 50% 4%;
+    animation: plantSway 3.8s ease-in-out infinite;
+}
+@keyframes plantSway {
+    0%, 100% { transform: rotate(-2.2deg); }
+    50% { transform: rotate(2.2deg); }
+}
+
+/* 编辑器画布 */
+.room-editor-canvas {
+    position: relative;
+    width: 143%;
+    height: 100%;
+    flex-shrink: 0;
+    background-image: url("assets/wallpaper.jpg");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center bottom;
+}
+
 .room-editor-canvas .room-item {
     cursor: grab;
+    touch-action: none;
 }
 
 .room-editor-canvas .room-item.selected {
@@ -278,6 +542,10 @@ html, body {
 .item-control-btn.layer-up,
 .item-control-btn.layer-down {
     background: var(--ink-soft);
+}
+
+.item-control-btn.layer-toggle {
+    background: var(--accent-soft);
 }
 
 /* ==========================================
@@ -539,7 +807,7 @@ html, body {
 /* フローティングボタン */
 .fab {
     position: fixed;
-    bottom: 26px;
+    bottom: calc(26px + env(safe-area-inset-bottom));
     right: 24px;
     width: 48px;
     height: 48px;
@@ -563,6 +831,65 @@ html, body {
 
 .fab span {
     font-size: 22px;
+}
+
+/* [修改点] 予算未設定のときは記録ボタンを控えめにし、注意を引く赤いパルスリングを出す */
+.fab.needs-budget {
+    background-color: var(--muted);
+    box-shadow: 0 6px 18px rgba(25, 27, 29, 0.16);
+}
+.fab.needs-budget::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border-radius: 18px;
+    border: 2px solid var(--danger);
+    opacity: 0.6;
+    animation: fabNeedsBudgetPulse 1.8s ease-out infinite;
+    pointer-events: none;
+}
+@keyframes fabNeedsBudgetPulse {
+    0% { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* [修改点] 予算未設定のまま記録しようとしたときに、予算ボックスに注意を促す */
+@keyframes budgetRequiredShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(3px); }
+}
+.budget-box.budget-required-shake {
+    animation: budgetRequiredShake 0.45s ease;
+}
+.budget-box.budget-required-shake .budget-box-label {
+    color: var(--danger);
+}
+
+/* [修改点] 画面下部に出す軽量トースト通知 */
+.app-toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(90px + env(safe-area-inset-bottom));
+    transform: translate(-50%, 10px);
+    background: var(--ink);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.28);
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.app-toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
 }
 
 /* ==========================================
@@ -589,7 +916,7 @@ html, body {
 .modal-content {
     background: var(--surface);
     width: 100%;
-    max-width: 430px;
+    max-width: 640px;
     border-top-left-radius: 18px;
     border-top-right-radius: 18px;
     padding: 22px 22px 24px 22px;
@@ -951,6 +1278,14 @@ html, body {
     align-items: center;
 }
 
+.petname-overlay {
+    align-items: center;
+}
+
+.petname-overlay .modal-content {
+    border-radius: 18px;
+}
+
 .pet-choice-row {
     display: flex;
     gap: 14px;
@@ -1025,6 +1360,20 @@ html, body {
     font-size: 1.6rem;
     color: var(--accent);
     margin-bottom: 12px;
+}
+
+.daily-login-later {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 0.72rem;
+    cursor: pointer;
+    margin-top: 2px;
+    font-family: var(--font-display);
+}
+
+.daily-login-later:hover {
+    color: var(--ink);
 }
 
 /* ==========================================
@@ -1133,7 +1482,7 @@ html, body {
 
 .shop-overlay .shop-content {
     width: 100%;
-    max-width: 430px;
+    max-width: 640px;
     height: 100%;
     max-height: 100%;
     border-radius: 0;
@@ -1150,7 +1499,7 @@ html, body {
     left: 50%;
     transform: translateX(-50%);
     width: 100%;
-    max-width: 430px;
+    max-width: 640px;
     background: var(--ink);
     z-index: 200;
     display: none;
@@ -1184,23 +1533,8 @@ html, body {
     color: rgba(255,255,255,0.5);
     font-size: 0.6rem;
     text-align: right;
-    max-width: 140px;
+    max-width: 180px;
     line-height: 1.4;
-}
-
-/* プレビューの箱と全く同じ横幅・高さになるようにして、
-   編集画面とメイン画面で見た目のサイズが変わらないようにする */
-.room-editor-canvas {
-    flex-shrink: 0;
-    width: calc(100% - 44px);
-    height: var(--room-height);
-    max-height: var(--room-height);
-    margin: 12px auto 0 auto;
-    border-radius: 16px;
-    position: relative;
-    background-size: cover;
-    background-position: center;
-    overflow: hidden;
 }
 
 .room-editor-tray {
@@ -1258,4 +1592,122 @@ html, body {
 .tray-empty-hint {
     color: rgba(255,255,255,0.4);
     font-size: 0.68rem;
+}
+
+/* ==========================================
+   今月の内訳（カテゴリ別バー）
+========================================== */
+.breakdown-box {
+    padding: 4px 0 18px 0;
+    border-bottom: 1px solid var(--line-strong);
+    margin-bottom: 4px;
+}
+.breakdown-title {
+    margin: 18px 0 4px 0;
+}
+.breakdown-list {
+    display: flex;
+    flex-direction: column;
+}
+.breakdown-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+}
+.breakdown-label {
+    width: 64px;
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.breakdown-track {
+    flex: 1;
+    height: 8px;
+    background: var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.breakdown-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+.breakdown-value {
+    width: 96px;
+    flex-shrink: 0;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--ink);
+    white-space: nowrap;
+}
+.breakdown-empty {
+    color: var(--muted);
+    font-size: 0.72rem;
+    padding: 8px 0;
+}
+
+/* マイルームレベル */
+.room-level {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--accent-soft);
+    background: rgba(46, 63, 86, 0.08);
+    padding: 2px 7px;
+    border-radius: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* ペットへの一言チャット入力 */
+.pet-chat-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 2px 0;
+}
+.pet-chat-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.72rem;
+    outline: none;
+    font-family: var(--font-display);
+    transition: border-color 0.15s ease;
+}
+.pet-chat-input:focus {
+    border-color: var(--accent);
+}
+.pet-chat-send {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: var(--ink);
+    color: #fff;
+    cursor: pointer;
+}
+.pet-chat-send span {
+    font-size: 17px;
+}
+
+
+/* Stability fixes: budget editing must not resize or jump the page. */
+.budget-box-edit { min-height: 38px; }
+.budget-box-edit input[type="number"] { min-width: 0; }
+@media (max-width: 640px) {
+  .modal-overlay { align-items: flex-end; }
+  .modal-content { max-height: min(82%, calc(100dvh - env(safe-area-inset-top) - 12px)); }
 }
