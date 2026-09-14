@@ -115,6 +115,7 @@ function renderBudgetSummary() {
     const budgetBox = document.getElementById("budget-box");
     const fab = document.getElementById("fab-add-expense");
     const btnEditBudget = document.getElementById("btn-edit-budget");
+    const usagePercent = document.getElementById("budget-usage-percent");
 
     if (fab) fab.classList.toggle("needs-budget", budget <= 0);
 
@@ -137,6 +138,7 @@ function renderBudgetSummary() {
     const ratio = spent / budget;
     const percent = Math.min(ratio * 100, 100);
     if (progressFill) progressFill.style.width = `${percent}%`;
+    if (usagePercent) usagePercent.textContent = `${Math.round((spent / budget) * 100)}%`;
 
     const remaining = budget - spent;
     if (remainingText) {
@@ -160,7 +162,7 @@ function renderBudgetInputValue() {
 }
 
 // ==========================================
-// 4. カテゴリ管理
+// 4. カテゴリー管理
 // ==========================================
 function getCategoryById(id) {
     return appData.categories.find(c => c.id === id);
@@ -217,12 +219,12 @@ window.startEditCategory = function (id) {
 
 window.deleteCategoryById = function (id) {
     if (appData.categories.length <= 1) {
-        alert("カテゴリは最低1つ必要です。");
+        alert("カテゴリーは最低1つ必要です。");
         return;
     }
     const cat = getCategoryById(id);
     if (!cat) return;
-    if (!confirm(`「${cat.name}」を削除しますか？\n記録済みの支出は残りのカテゴリに移動されます。`)) return;
+    if (!confirm(`「${cat.name}」を削除しますか？\n記録済みの支出は残りのカテゴリーに移動されます。`)) return;
 
     appData.categories = appData.categories.filter(c => c.id !== id);
     const fallbackId = appData.categories[0].id;
@@ -401,6 +403,18 @@ function ensureBudgetIsSet() {
 }
 
 function setupEventListeners() {
+    // ------------------------------------------
+    // 追加: モーダル背景（空白部分）クリックで閉じる
+    // ------------------------------------------
+    document.querySelectorAll(".modal, #modal-expense, #modal-category, #modal-data").forEach(modal => {
+        modal.addEventListener("click", (e) => {
+            // クリックされたのが背景の黒い枠自体の場合のみ閉じる（中のカード部分をクリックした時は閉じない）
+            if (e.target === modal) {
+                modal.classList.remove("open");
+            }
+        });
+    });
+
     const btnEditBudget = document.getElementById("btn-edit-budget");
     if (btnEditBudget) {
         btnEditBudget.addEventListener("click", () => {
@@ -583,7 +597,7 @@ function setupEventListeners() {
         btnSaveCategory.addEventListener("click", () => {
             const name = document.getElementById("cat-form-name").value.trim();
             if (!name) {
-                alert("カテゴリ名を入力してください。");
+                alert("カテゴリー名を入力してください。");
                 return;
             }
 
@@ -596,7 +610,7 @@ function setupEventListeners() {
             } else {
                 const isDuplicate = appData.categories.some(c => c.name === name);
                 if (isDuplicate) {
-                    alert("同じ名前のカテゴリが既にあります。");
+                    alert("同じ名前のカテゴリーが既にあります。");
                     return;
                 }
                 appData.categories.push({ id: appData.nextCategoryId, name });
@@ -716,7 +730,7 @@ function parseCsv(text) {
 }
 
 function exportExpensesAsCsv() {
-    const header = ["日時", "カテゴリ", "金額", "メモ"];
+    const header = ["日時", "カテゴリー", "金額", "メモ"];
     const rows = [header];
     const sorted = [...appData.expenses].sort((a, b) => a.datetime.localeCompare(b.datetime));
     sorted.forEach(exp => {
@@ -827,17 +841,16 @@ function resetCurrentMonthData() {
 }
 
 function resetAllData() {
-    if (!confirm("すべてのデータ（予算・カテゴリ・支出履歴・マイルーム）を削除して初期状態に戻します。この操作は元に戻せません。よろしいですか？")) return;
+    if (!confirm("すべてのデータ（予算・カテゴリー・支出履歴・マイルーム）を削除して初期状態に戻します。この操作は元に戻せません。よろしいですか？")) return;
     if (!confirm("本当によろしいですか？もう一度確認します。")) return;
 
     localStorage.clear();
 
     appData = JSON.parse(JSON.stringify(DEFAULT_DATA));
     const monthKey = getCurrentMonthKey();
-    appData.budget[monthKey] = 8888;
+    appData.budget[monthKey] = 0;
 
     roomData = JSON.parse(JSON.stringify(DEFAULT_ROOM_DATA));
-    roomData.points = 8888;
     petIsAsleep = Math.random() < 0.25;
 
     saveData();
@@ -856,7 +869,7 @@ function resetAllData() {
 
     if (!roomData.pet) openPetSelectModal();
     
-    alert("初期化が完了しました！（初期予算・ポイント: 8,888）");
+    alert("初期化が完了しました！（初期予算:0,ポイント: 8888）");
 }
 
 function renderStorageInfo() {
@@ -874,7 +887,7 @@ function renderStorageInfo() {
 const ROOM_STORAGE_KEY = "yoyu_aru_room_data";
 
 const FURNITURE_CATALOG = [
-    { id: "nezumi_karakuri", img: "assets/nezumi_karakuri.png", price: 800 },
+    { id: "nezumi_karakuri", img: "assets/nezumi_karakuri.gif", price: 800 },
     { id: "toy_car_red", img: "assets/toy_car_red.png", price: 800 },
     { id: "wool_red", img: "assets/wool_red.png", price: 800 },
     { id: "toy_car", img: "assets/toy_car.png", price: 800 },
@@ -886,9 +899,9 @@ const FURNITURE_CATALOG = [
     { id: "hang_plant", img: "assets/hang_plant.png", price: 1800 },
     { id: "desk_01", img: "assets/desk_01.png", price: 3500 },
     { id: "rack", img: "assets/rack.png", price: 2000 },
-    { id: "danro", img: "assets/danro.png", price: 4800 },
+    { id: "danro", img: "assets/danro.gif", price: 4800 },
     { id: "window", img: "assets/window.png", price: 3600 },
-    { id: "clock", img: "assets/clock.png", price: 1600 },
+    { id: "clock", img: "assets/clock.gif", price: 1600 },
     { id: "recorder", img: "assets/recorder.png", price: 2500 },
     { id: "tv", img: "assets/tv.png", price: 3500 },
     { id: "tiki", img: "assets/tiki.png", price: 3000 },
@@ -897,9 +910,15 @@ const FURNITURE_CATALOG = [
     { id: "pet_bed_01", img: "assets/pet_bed_01.png", price: 4000 },
     { id: "pet_bed_02", img: "assets/pet_bed_02.png", price: 3700 },
     { id: "pet_bed_03", img: "assets/pet_bed_03.png", price: 3900 },
-    { id: "globe", img: "assets/globe.png", price: 900 },
-    { id: "fishbowl", img: "assets/fishbowl.png", price: 2400 },
-    { id: "fishtank", img: "assets/fishtank.png", price: 4000 }
+    { id: "globe", img: "assets/globe.gif", price: 900 },
+    { id: "fishbowl", img: "assets/fishbowl.gif", price: 2400 },
+    { id: "fishtank", img: "assets/fishtank.gif", price: 4000 }
+];
+
+const WALLPAPER_CATALOG = [
+    { id: "default", img: "assets/wallpaper.jpg", price: 0 },
+    { id: "modern_gray", img: "assets/wallpaper_modern_gray.jpg", price: 1500 },
+    { id: "modern_pastel", img: "assets/wallpaper_cute_pastel.jpg", price: 1500 }
 ];
 
 const PET_Z = 25;
@@ -935,7 +954,9 @@ const DEFAULT_ROOM_DATA = {
     lastLoginDate: null,
     pet: null,
     ownedItemIds: [],
-    placedItems: []
+    placedItems: [],
+    wallpaperId: "default",
+    ownedWallpaperIds: ["default"]
 };
 
 let roomData = loadRoomData();
@@ -953,6 +974,9 @@ function loadRoomData() {
     if (!data) data = JSON.parse(JSON.stringify(DEFAULT_ROOM_DATA));
     if (data.points === undefined) data.points = 8888;
     if (!data.ownedItemIds) data.ownedItemIds = [];
+    if (!data.wallpaperId) data.wallpaperId = "default";
+    if (!data.ownedWallpaperIds) data.ownedWallpaperIds = ["default"];
+    if (!data.ownedWallpaperIds.includes("default")) data.ownedWallpaperIds.push("default");
     if (data.pet && !data.pet.name) data.pet.name = data.pet.type === "usagi" ? "ぴょん" : "ねこ";
     if (!data.placedItems) data.placedItems = [];
     
@@ -977,6 +1001,10 @@ function todayDateKey() {
 
 function getFurnitureById(id) {
     return FURNITURE_CATALOG.find(f => f.id === id);
+}
+
+function getWallpaperById(id) {
+    return WALLPAPER_CATALOG.find(w => w.id === id) || WALLPAPER_CATALOG[0];
 }
 
 function randomBetween(min, max) {
@@ -1366,7 +1394,8 @@ function renderCurrency() {
 function renderRoomScene(container, interactive) {
     if (!container) return;
     container.innerHTML = "";
-    
+    container.style.backgroundImage = `url("${getWallpaperById(roomData.wallpaperId).img}")`;
+
     if (roomData.pet) {
         const petEl = createPetElement(interactive, container);
         container.appendChild(petEl);
@@ -1721,14 +1750,38 @@ function returnItemToInventory(uid) {
 // ==========================================
 // ショップ
 // ==========================================
+let shopTab = "furniture"; // "furniture" | "wallpaper"
+
 function openShop() {
+    shopTab = "furniture";
+    updateShopTabButtons();
     renderShopGrid();
     renderCurrency();
     const modal = document.getElementById("modal-shop");
     if (modal) modal.classList.add("open");
 }
 
+function setShopTab(tab) {
+    shopTab = tab;
+    updateShopTabButtons();
+    renderShopGrid();
+}
+
+function updateShopTabButtons() {
+    document.querySelectorAll(".shop-tab-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tab === shopTab);
+    });
+}
+
 function renderShopGrid() {
+    if (shopTab === "wallpaper") {
+        renderWallpaperShopGrid();
+    } else {
+        renderFurnitureShopGrid();
+    }
+}
+
+function renderFurnitureShopGrid() {
     const grid = document.getElementById("shop-grid");
     const emptyHint = document.getElementById("shop-empty-hint");
     if (!grid) return;
@@ -1737,7 +1790,10 @@ function renderShopGrid() {
     const available = FURNITURE_CATALOG.filter(f => !roomData.ownedItemIds.includes(f.id));
 
     if (available.length === 0) {
-        if (emptyHint) emptyHint.style.display = "block";
+        if (emptyHint) {
+            emptyHint.style.display = "block";
+            emptyHint.textContent = "すべてのアイテムを購入しました！";
+        }
         return;
     }
     if (emptyHint) emptyHint.style.display = "none";
@@ -1757,6 +1813,68 @@ function renderShopGrid() {
         card.querySelector(".shop-buy-btn").addEventListener("click", () => buyItem(item.id));
         grid.appendChild(card);
     });
+}
+
+function renderWallpaperShopGrid() {
+    const grid = document.getElementById("shop-grid");
+    const emptyHint = document.getElementById("shop-empty-hint");
+    if (!grid) return;
+    grid.innerHTML = "";
+    if (emptyHint) emptyHint.style.display = "none";
+
+    WALLPAPER_CATALOG.forEach(item => {
+        const owned = roomData.ownedWallpaperIds.includes(item.id);
+        const active = roomData.wallpaperId === item.id;
+        const affordable = roomData.points >= item.price;
+
+        const card = document.createElement("div");
+        card.className = "shop-card wallpaper-card" + (active ? " active" : "");
+        card.innerHTML = `
+            <div class="shop-card-image"><img src="${item.img}" alt="" draggable="false"></div>
+            ${
+                owned
+                    ? `<button class="shop-buy-btn wallpaper-select-btn" ${active ? "disabled" : ""}>${active ? "使用中" : "使用する"}</button>`
+                    : `<div class="shop-card-price"><span class="material-icons-round">toll</span>${item.price.toLocaleString()}</div>
+                       <button class="shop-buy-btn" ${affordable ? "" : "disabled"}>購入</button>`
+            }
+        `;
+        card.querySelector(".shop-buy-btn").addEventListener("click", () => {
+            if (owned) {
+                selectWallpaper(item.id);
+            } else {
+                buyWallpaper(item.id);
+            }
+        });
+        grid.appendChild(card);
+    });
+}
+
+function buyWallpaper(wallpaperId) {
+    const item = getWallpaperById(wallpaperId);
+    if (!item) return;
+    if (roomData.points < item.price) return;
+    if (roomData.ownedWallpaperIds.includes(wallpaperId)) return;
+
+    roomData.points -= item.price;
+    roomData.ownedWallpaperIds.push(wallpaperId);
+    selectWallpaper(wallpaperId); 
+
+    saveRoomData();
+    renderCurrency();
+    renderShopGrid();
+    playCoin();
+    vibrate(25);
+}
+
+function selectWallpaper(wallpaperId) {
+    if (!roomData.ownedWallpaperIds.includes(wallpaperId)) return;
+    roomData.wallpaperId = wallpaperId;
+    saveRoomData();
+    renderRoomPreview();
+    if (document.getElementById("room-editor").classList.contains("open")) {
+        renderRoomScene(document.getElementById("room-editor-canvas"), true);
+    }
+    renderShopGrid();
 }
 
 function buyItem(itemId) {
@@ -1794,6 +1912,8 @@ function exportRoomAsCsv() {
     rows.push(["petY", roomData.pet ? roomData.pet.y : ""]);
     rows.push(["petScale", roomData.pet ? roomData.pet.scale : ""]);
     rows.push(["ownedItemIds", roomData.ownedItemIds.join("|")]);
+    rows.push(["wallpaperId", roomData.wallpaperId || "default"]);
+    rows.push(["ownedWallpaperIds", roomData.ownedWallpaperIds.join("|")]);
     roomData.placedItems.forEach((it, i) => {
         rows.push([`item_${i}`, `${it.uid},${it.itemId},${it.x},${it.y},${it.scale},${it.placed},${it.z || 1}`]);
     });
@@ -1839,6 +1959,11 @@ function importRoomFromCsv(file) {
             };
         }
         newData.ownedItemIds = map.ownedItemIds ? map.ownedItemIds.split("|").filter(Boolean) : [];
+        newData.wallpaperId = map.wallpaperId || "default";
+        newData.ownedWallpaperIds = map.ownedWallpaperIds
+            ? map.ownedWallpaperIds.split("|").filter(Boolean)
+            : ["default"];
+        if (!newData.ownedWallpaperIds.includes("default")) newData.ownedWallpaperIds.push("default");
         newData.placedItems = items.map(v => {
             const [uid, itemId, x, y, scale, placed, z] = v.split(",");
             return { uid, itemId, x: parseFloat(x), y: parseFloat(y), scale: parseFloat(scale), placed: placed === "true", z: parseInt(z) || 1 };
@@ -1862,6 +1987,10 @@ function setupRoomEventListeners() {
     document.getElementById("choose-usagi")?.addEventListener("click", () => choosePet("usagi"));
     document.getElementById("btn-confirm-pet-name")?.addEventListener("click", confirmPetName);
     document.getElementById("pet-name-input")?.addEventListener("keydown", (e) => { if (e.key === "Enter") confirmPetName(); });
+
+    document.querySelectorAll(".shop-tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => setShopTab(btn.dataset.tab));
+    });
 
     document.getElementById("btn-claim-daily-login")?.addEventListener("click", claimDailyLoginBonus);
     document.getElementById("btn-later-daily-login")?.addEventListener("click", () => {

@@ -618,13 +618,13 @@ html, body {
 }
 
 .budget-progress-track {
-    height: 1px;
+    height: 4px;
     background: var(--line-strong);
     overflow: visible;
 }
 
 .budget-progress-fill {
-    height: 2px;
+    height: 5px;
     margin-top: -0.5px;
     width: 0%;
     background: var(--accent);
@@ -1387,6 +1387,30 @@ html, body {
     border-bottom: 1px solid var(--line);
 }
 
+.shop-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.shop-tab-btn {
+    flex: 1;
+    padding: 8px 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.shop-tab-btn.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+}
+
 .shop-currency-unit {
     font-family: var(--font-display);
     color: var(--muted);
@@ -1462,6 +1486,17 @@ html, body {
     background: var(--line-strong);
     color: var(--muted);
     cursor: not-allowed;
+}
+
+.wallpaper-card.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.wallpaper-select-btn:disabled {
+    background: var(--accent-soft);
+    color: #fff;
+    opacity: 0.8;
 }
 
 .shop-empty-hint {
@@ -1706,4 +1741,12 @@ html, body {
 @media (max-width: 640px) {
   .modal-overlay { align-items: flex-end; }
   .modal-content { max-height: min(82%, calc(100dvh - env(safe-area-inset-top) - 12px)); }
+}
+
+/* 予算使用率表示（追加） */
+.budget-usage-percent {
+    margin-left: auto;
+    margin-right: 8px;
+    color: var(--ink-soft);
+    font-size: 1.2rem;
 }

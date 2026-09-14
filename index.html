@@ -20,9 +20,9 @@
                     <span class="material-icons-round">storefront</span>
                 </button>
                 <button class="icon-button" id="btn-open-data" title="データ管理">
-                    <span class="material-icons-round">storage</span>
+                    <span class="material-icons-round">save</span>
                 </button>
-                <button class="icon-button" id="btn-open-category" title="カテゴリ設定">
+                <button class="icon-button" id="btn-open-category" title="カテゴリー設定">
                     <span class="material-icons-round">settings</span>
                 </button>
             </div>
@@ -61,7 +61,8 @@
             <div class="budget-box" id="budget-box">
                 <div class="budget-box-header">
                     <span class="budget-box-label" id="budget-period-label">2026年7月の予算</span>
-                    <button class="budget-edit-btn" id="btn-edit-budget" title="予算を編集">
+                    <span class="budget-usage-percent" id="budget-usage-percent">0%</span>
+            <button class="budget-edit-btn" id="btn-edit-budget" title="予算を編集">
                         <span class="material-icons-round">edit</span>
                     </button>
                 </div>
@@ -81,7 +82,7 @@
                 </div>
             </div>
 
-            <!-- 今月の内訳（カテゴリ別） -->
+            <!-- 今月の内訳（カテゴリー別） -->
             <div class="breakdown-box" id="breakdown-box">
                 <div class="section-title-bar breakdown-title">
                     <h2>今月の内訳</h2>
@@ -114,7 +115,7 @@
                         <input type="number" id="expense-amount" placeholder="0" min="0">
                     </div>
                     <div class="form-group">
-                        <label>カテゴリ</label>
+                        <label>カテゴリー</label>
                         <div class="select-wrapper">
                             <select id="expense-category" class="styled-select-full"></select>
                         </div>
@@ -134,23 +135,23 @@
             </div>
         </div>
 
-        <!-- カテゴリ管理モーダル -->
+        <!-- カテゴリー管理モーダル -->
         <div class="modal-overlay" id="modal-category">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>カテゴリ設定</h3>
+                    <h3>カテゴリー設定</h3>
                     <button class="close-button" id="btn-close-category">閉じる</button>
                 </div>
                 <div class="modal-body">
                     <div class="category-manage-list" id="category-manage-list"></div>
                     <button class="add-category-trigger" id="btn-show-add-category">
                         <span class="material-icons-round">add_circle</span>
-                        新しいカテゴリを追加
+                        新しいカテゴリーを追加
                     </button>
                     <div class="category-edit-form" id="category-edit-form">
                         <input type="hidden" id="cat-edit-id" value="">
                         <div class="form-group">
-                            <label>カテゴリ名</label>
+                            <label>カテゴリー名</label>
                             <input type="text" id="cat-form-name" placeholder="例：交際費">
                         </div>
                         <div class="category-form-actions">
@@ -282,6 +283,10 @@
                     <span class="material-icons-round">toll</span>
                     <span id="shop-currency-amount">0</span>
                     <span class="shop-currency-unit">pt 所持</span>
+                </div>
+                <div class="shop-tabs">
+                    <button class="shop-tab-btn active" data-tab="furniture">家具</button>
+                    <button class="shop-tab-btn" data-tab="wallpaper">壁紙</button>
                 </div>
                 <div class="modal-body">
                     <div class="shop-grid" id="shop-grid"></div>
