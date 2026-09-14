@@ -1204,6 +1204,13 @@ html, body {
     margin-bottom: 14px;
 }
 
+.data-subsection-title {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin: 14px 0 8px;
+}
+
 .data-action-row {
     display: flex;
     flex-wrap: wrap;

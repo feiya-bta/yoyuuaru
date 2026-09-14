@@ -548,14 +548,14 @@ function setupEventListeners() {
 
     const btnExportCsv = document.getElementById("btn-export-csv");
     if (btnExportCsv) {
-        btnExportCsv.addEventListener("click", exportExpensesAsCsv);
+        btnExportCsv.addEventListener("click", exportAllAsCsv);
     }
 
     const inputImportCsv = document.getElementById("input-import-csv");
     if (inputImportCsv) {
         inputImportCsv.addEventListener("change", (e) => {
             const file = e.target.files && e.target.files[0];
-            if (file) importExpensesFromCsv(file);
+            if (file) importAllFromCsv(file);
             inputImportCsv.value = "";
         });
     }
@@ -727,6 +727,215 @@ function parseCsv(text) {
         rows.push(row);
     }
     return rows.filter(r => r.some(c => c.trim() !== ""));
+}
+
+function exportAllAsCsv() {
+    const rows = [];
+
+    rows.push(["SECTION", "expenses"]);
+    rows.push(["日時", "カテゴリー", "金額", "メモ"]);
+    const sorted = [...appData.expenses].sort((a, b) => a.datetime.localeCompare(b.datetime));
+    sorted.forEach(exp => {
+        const cat = getCategoryById(exp.categoryId);
+        rows.push([exp.datetime, cat ? cat.name : "不明", exp.amount, exp.memo || ""]);
+    });
+
+    rows.push(["SECTION", "budget"]);
+    rows.push(["monthKey", "amount"]);
+    Object.keys(appData.budget || {}).forEach(monthKey => {
+        rows.push([monthKey, appData.budget[monthKey]]);
+    });
+
+    rows.push(["SECTION", "room"]);
+    rows.push(["key", "value"]);
+    rows.push(["points", roomData.points]);
+    rows.push(["lastLoginDate", roomData.lastLoginDate || ""]);
+    rows.push(["petType", roomData.pet ? roomData.pet.type : ""]);
+    rows.push(["petName", roomData.pet ? roomData.pet.name || "" : ""]);
+    rows.push(["petX", roomData.pet ? roomData.pet.x : ""]);
+    rows.push(["petY", roomData.pet ? roomData.pet.y : ""]);
+    rows.push(["petScale", roomData.pet ? roomData.pet.scale : ""]);
+    rows.push(["ownedItemIds", roomData.ownedItemIds.join("|")]);
+    rows.push(["wallpaperId", roomData.wallpaperId || "default"]);
+    rows.push(["ownedWallpaperIds", roomData.ownedWallpaperIds.join("|")]);
+    roomData.placedItems.forEach((it, i) => {
+        rows.push([`item_${i}`, `${it.uid},${it.itemId},${it.x},${it.y},${it.scale},${it.placed},${it.z || 1}`]);
+    });
+
+    const csvContent = rows.map(r => r.map(csvEscape).join(",")).join("\r\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const now = new Date();
+    const fname = `yoyu_aru_backup_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}.csv`;
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function importAllFromCsv(file) {
+    const statusEl = document.getElementById("data-import-status");
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+        const rows = parseCsv(String(e.target.result));
+        if (rows.length === 0) {
+            if (statusEl) statusEl.textContent = "読み込めるデータがありませんでした。";
+            return;
+        }
+
+        // SECTIONマーカーで「expenses」と「room」に分割する
+        const sections = { expenses: [], room: [], budget: [] };
+        let current = null;
+        rows.forEach(r => {
+            if (r[0] === "SECTION") {
+                current = (r[1] === "room" || r[1] === "budget") ? r[1] : "expenses";
+                return;
+            }
+            if (current) sections[current].push(r);
+        });
+
+        // 旧形式（区切りマーカーなし・支出のみ）のファイルにも対応
+        if (!current) {
+            sections.expenses = rows;
+        }
+
+        // --- 支出データの取り込み ---
+        let added = 0;
+        let skipped = 0;
+        let expenseRows = sections.expenses;
+        if (expenseRows.length > 0) {
+            let startIndex = 0;
+            const firstCell = (expenseRows[0][0] || "").trim().toLowerCase();
+            if (firstCell === "日時" || firstCell === "datetime" || firstCell === "date") startIndex = 1;
+
+            for (let i = startIndex; i < expenseRows.length; i++) {
+                const cols = expenseRows[i];
+                const [rawDatetime, rawCategory, rawAmount, rawMemo] = cols;
+
+                const amount = parseFloat(String(rawAmount || "").replace(/[^\d.-]/g, ""));
+                const d = new Date(rawDatetime);
+
+                if (!rawDatetime || isNaN(amount) || amount <= 0 || isNaN(d.getTime())) {
+                    skipped++;
+                    continue;
+                }
+
+                const categoryName = (rawCategory || "その他").trim() || "その他";
+                let category = appData.categories.find(c => c.name === categoryName);
+                if (!category) {
+                    category = { id: appData.nextCategoryId, name: categoryName };
+                    appData.categories.push(category);
+                    appData.nextCategoryId += 1;
+                }
+
+                const isoStr = d.toISOString();
+                appData.expenses.push({
+                    id: Date.now() + added,
+                    amount,
+                    categoryId: category.id,
+                    memo: (rawMemo || "").trim(),
+                    datetime: isoStr,
+                    dateKey: isoStr.split("T")[0],
+                    monthKey: isoStr.slice(0, 7)
+                });
+                added++;
+            }
+            saveData();
+            renderBudgetSummary();
+            renderExpenseTimeline();
+            renderCategorySelect();
+            renderCategoryManageList();
+        }
+
+        // --- 予算データの取り込み ---
+        let budgetImported = false;
+        const budgetRows = sections.budget;
+        if (budgetRows.length > 0) {
+            let startIndex = 0;
+            const firstCell = (budgetRows[0][0] || "").trim().toLowerCase();
+            if (firstCell === "monthkey") startIndex = 1;
+
+            for (let i = startIndex; i < budgetRows.length; i++) {
+                const [monthKey, amount] = budgetRows[i];
+                const parsed = parseFloat(amount);
+                if (monthKey && !isNaN(parsed)) {
+                    appData.budget[monthKey] = parsed;
+                    budgetImported = true;
+                }
+            }
+            if (budgetImported) {
+                saveData();
+                renderBudgetSummary();
+            }
+        }
+
+        // --- マイルームデータの取り込み ---
+        let roomImported = false;
+        const roomRows = sections.room;
+        if (roomRows.length > 0) {
+            const map = {};
+            const items = [];
+            roomRows.slice(1).forEach(r => {
+                const [key, value] = r;
+                if (!key) return;
+                if (key.startsWith("item_")) items.push(value);
+                else map[key] = value;
+            });
+
+            const newData = JSON.parse(JSON.stringify(DEFAULT_ROOM_DATA));
+            newData.points = parseInt(map.points) || 0;
+            newData.lastLoginDate = map.lastLoginDate || null;
+            if (map.petType) {
+                newData.pet = {
+                    type: map.petType,
+                    name: map.petName || (map.petType === "usagi" ? "ぴょん" : "ねこ"),
+                    x: parseFloat(map.petX) || 50,
+                    y: parseFloat(map.petY) || 85,
+                    scale: parseFloat(map.petScale) || 1
+                };
+            }
+            newData.ownedItemIds = map.ownedItemIds ? map.ownedItemIds.split("|").filter(Boolean) : [];
+            newData.wallpaperId = map.wallpaperId || "default";
+            newData.ownedWallpaperIds = map.ownedWallpaperIds
+                ? map.ownedWallpaperIds.split("|").filter(Boolean)
+                : ["default"];
+            if (!newData.ownedWallpaperIds.includes("default")) newData.ownedWallpaperIds.push("default");
+            newData.placedItems = items.map(v => {
+                const [uid, itemId, x, y, scale, placed, z] = v.split(",");
+                return { uid, itemId, x: parseFloat(x), y: parseFloat(y), scale: parseFloat(scale), placed: placed === "true", z: parseInt(z) || 1 };
+            });
+
+            roomData = newData;
+            saveRoomData();
+            renderCurrency();
+            renderRoomPreview();
+            roomImported = true;
+        }
+
+        renderStorageInfo();
+
+        const parts = [];
+        if (expenseRows.length > 0) {
+            parts.push(skipped > 0
+                ? `支出${added}件（${skipped}件はスキップ）`
+                : `支出${added}件`);
+        }
+        if (budgetImported) parts.push("予算データ");
+        if (roomImported) parts.push("マイルームデータ");
+        if (statusEl) {
+            statusEl.textContent = parts.length > 0
+                ? `${parts.join("、")}を読み込みました`
+                : "読み込めるデータがありませんでした。";
+        }
+    };
+
+    reader.onerror = () => { if (statusEl) statusEl.textContent = "ファイルの読み込みに失敗しました。"; };
+    reader.readAsText(file, "utf-8");
 }
 
 function exportExpensesAsCsv() {
@@ -2027,13 +2236,5 @@ function setupRoomEventListeners() {
         if (Math.random() < 0.6) spawnPetReaction("favorite");
     });
 
-    document.getElementById("btn-export-room-csv")?.addEventListener("click", exportRoomAsCsv);
-    const inputImportRoomCsv = document.getElementById("input-import-room-csv");
-    if (inputImportRoomCsv) {
-        inputImportRoomCsv.addEventListener("change", (e) => {
-            const file = e.target.files && e.target.files[0];
-            if (file) importRoomFromCsv(file);
-            inputImportRoomCsv.value = "";
-        });
-    }
+    // 支出データ・マイルームデータはまとめてbtn-export-csv/input-import-csvで処理
 }
