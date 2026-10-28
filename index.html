@@ -2,10 +2,22 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>余裕、ある？</title>
+
+    <!-- PWA：ホーム画面に追加してアプリのように使えるようにする -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#fef6e4">
+    <meta name="description" content="ペットと一緒に続ける家計簿アプリ">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="余裕、ある？">
+    <link rel="icon" href="assets/icon-192.png">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Klee+One:wght@400;600&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
 </head>
 <body>
@@ -16,15 +28,35 @@
                 <span id="currency-amount">0</span>
             </div>
             <div class="header-actions">
-                <button class="icon-button" id="btn-open-shop" title="ショップ">
-                    <span class="material-icons-round">storefront</span>
+                <button class="icon-button planner-icon" id="btn-open-planner" type="button" title="貯金プランナー" aria-label="貯金プランナー">
+                    <span class="material-icons-round">auto_awesome</span>
                 </button>
-                <button class="icon-button" id="btn-open-data" title="データ管理">
-                    <span class="material-icons-round">save</span>
+                <button class="icon-button account-icon" id="btn-open-account" type="button" title="データ移行" aria-label="データ移行">
+                    <span class="material-icons-round">sync_alt</span>
                 </button>
-                <button class="icon-button" id="btn-open-category" title="カテゴリー設定">
-                    <span class="material-icons-round">settings</span>
-                </button>
+                <div class="header-more">
+                    <button class="icon-button" id="btn-open-more" type="button" title="その他のメニュー" aria-label="その他のメニュー" aria-haspopup="true" aria-expanded="false">
+                        <span class="material-icons-round">more_horiz</span>
+                    </button>
+                    <div class="header-more-menu" id="header-more-menu" role="menu">
+                        <button class="more-item" id="btn-open-gacha" type="button" role="menuitem">
+                            <span class="material-icons-round">casino</span>
+                            <span>ガチャ</span>
+                        </button>
+                        <button class="more-item" id="btn-open-shop" type="button" role="menuitem">
+                            <span class="material-icons-round">storefront</span>
+                            <span>ショップ</span>
+                        </button>
+                        <button class="more-item" id="btn-open-data" type="button" role="menuitem">
+                            <span class="material-icons-round">storage</span>
+                            <span>データ管理</span>
+                        </button>
+                        <button class="more-item" id="btn-open-category" type="button" role="menuitem">
+                            <span class="material-icons-round">settings</span>
+                            <span>カテゴリ設定</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -50,6 +82,21 @@
                 </div>
 
             </div>
+
+            <!-- 下に引くと画面全体が小さくなる -->
+            <button class="pet-float-grip" id="pet-float-grip" type="button" title="画面を小さくする">
+                <span class="material-icons-round">keyboard_arrow_down</span>
+                <span class="pet-float-grip-text">下に引いて画面を小さくする</span>
+            </button>
+
+            <!-- 親密度（なつき度）：記録するほど上がる。予算オーバーでも下がらない -->
+            <div class="affinity-box" id="affinity-box" title="記録するほどペットとなかよくなります">
+                <span class="material-icons-round affinity-heart">favorite</span>
+                <span class="affinity-label" id="affinity-label">はじめまして</span>
+                <span class="affinity-track"><span class="affinity-fill" id="affinity-fill"></span></span>
+                <span class="affinity-score" id="affinity-score">0</span>
+            </div>
+
             <div class="pet-chat-bar">
                 <input type="text" class="pet-chat-input" id="pet-chat-input" placeholder="ペットに話しかける" maxlength="40" autocomplete="off">
                 <button class="pet-chat-send" id="pet-chat-send" title="送信"><span class="material-icons-round">send</span></button>
@@ -57,23 +104,47 @@
         </div>
 
         <main class="app-content">
+            <!-- バックアップのお知らせ -->
+            <div class="backup-banner" id="backup-banner" style="display:none;">
+                <span class="material-icons-round backup-banner-icon">cloud_off</span>
+                <span class="backup-banner-text" id="backup-banner-text"></span>
+                <button type="button" class="backup-banner-btn" id="btn-backup-banner-open">保存する</button>
+                <button type="button" class="backup-banner-later" id="btn-backup-banner-later">あとで</button>
+            </div>
+
+            <!-- 表示月の切り替え（過去月の閲覧） -->
+            <div class="month-nav" id="month-nav">
+                <button class="month-nav-btn" id="btn-prev-month" title="前の月">
+                    <span class="material-icons-round">chevron_left</span>
+                </button>
+                <span class="month-nav-label" id="month-nav-label">-</span>
+                <button class="month-nav-btn" id="btn-next-month" title="次の月">
+                    <span class="material-icons-round">chevron_right</span>
+                </button>
+                <button class="month-nav-today" id="btn-this-month">今月へ</button>
+            </div>
+            <p class="month-past-note" id="month-past-note">過去の月を表示中です</p>
+
             <!-- 予算サマリー -->
             <div class="budget-box" id="budget-box">
                 <div class="budget-box-header">
-                    <span class="budget-box-label" id="budget-period-label">2026年7月の予算</span>
-                    <span class="budget-usage-percent" id="budget-usage-percent">0%</span>
-            <button class="budget-edit-btn" id="btn-edit-budget" title="予算を編集">
+                    <div class="budget-heading">
+                        <span class="budget-hero-label" id="budget-hero-label">今月の余裕</span>
+                        <span class="budget-box-label" id="budget-period-label">2026年7月の予算</span>
+                    </div>
+                    <button class="budget-edit-btn" id="btn-edit-budget" type="button" title="予算を編集" aria-label="予算を編集">
                         <span class="material-icons-round">edit</span>
                     </button>
                 </div>
                 <div class="budget-box-display" id="budget-box-display">
+                    <p class="budget-remaining-text" id="budget-remaining-text">予算が未設定です</p>
                     <div class="budget-amount-row">
                         <span id="summary-spent">0</span><span class="summary-slash">/</span><span id="summary-budget">0</span><span class="summary-unit">円</span>
                     </div>
                     <div class="budget-progress-track">
                         <div class="budget-progress-fill" id="budget-progress-fill"></div>
                     </div>
-                    <p class="budget-remaining-text" id="budget-remaining-text">予算が未設定です</p>
+                    <p class="budget-category-summary" id="budget-category-summary"></p>
                 </div>
                 <div class="budget-box-edit" id="budget-box-edit">
                     <input type="number" id="budget-input" placeholder="0" min="0" step="1000">
@@ -82,18 +153,88 @@
                 </div>
             </div>
 
-            <!-- 今月の内訳（カテゴリー別） -->
+            <!-- 内訳（カテゴリ別） -->
             <div class="breakdown-box" id="breakdown-box">
                 <div class="section-title-bar breakdown-title">
-                    <h2>今月の内訳</h2>
+                    <h2 id="breakdown-title-text">内訳</h2>
+                    <button class="filter-toggle-btn" id="btn-open-category-budget" type="button" title="カテゴリ別予算">
+                        <span class="material-icons-round">savings</span>カテゴリ予算
+                    </button>
                 </div>
                 <div class="breakdown-list" id="breakdown-list"></div>
             </div>
 
-            <!-- 支出タイムライン -->
+            <!-- 貯金プラン（AIプランナーの結果） -->
+            <div class="plan-card" id="plan-card" style="display:none;"></div>
+
+            <!-- グラフ -->
+            <div class="charts-box" id="charts-box">
+                <div class="section-title-bar">
+                    <h2 id="charts-title-text">グラフ</h2>
+                </div>
+                <p class="chart-summary" id="chart-summary"></p>
+
+                <div class="chart-block">
+                    <div class="chart-block-head">
+                        <span class="chart-block-title">日別の支出</span>
+                        <span class="chart-block-note" id="daily-chart-note"></span>
+                    </div>
+                    <div class="chart-svg-wrap" id="daily-chart"></div>
+                </div>
+
+                <div class="chart-block">
+                    <div class="chart-block-head">
+                        <span class="chart-block-title">週別</span>
+                    </div>
+                    <div class="weekly-list" id="weekly-list"></div>
+                </div>
+
+                <div class="chart-block">
+                    <div class="chart-block-head">
+                        <span class="chart-block-title">前月との比較</span>
+                    </div>
+                    <div class="compare-list" id="compare-list"></div>
+                </div>
+            </div>
+
+            <!-- 支出の記録（絞り込み付き） -->
             <div class="section-title-bar">
                 <h2>支出の記録</h2>
+                <button class="filter-toggle-btn" id="btn-toggle-filter" title="絞り込み">
+                    <span class="material-icons-round">filter_list</span>絞り込み
+                </button>
+                <span class="filter-count" id="filter-count"></span>
             </div>
+
+            <div class="filter-panel" id="filter-panel">
+                <div class="filter-row">
+                    <input type="text" id="filter-keyword" class="filter-input"
+                           placeholder="キーワード（メモ・店舗・品目）" autocomplete="off">
+                </div>
+                <div class="filter-row">
+                    <select id="filter-category" class="filter-select"></select>
+                </div>
+                <div class="filter-row">
+                    <input type="number" id="filter-min" class="filter-input-sm" placeholder="金額 下限" min="0">
+                    <span class="filter-tilde">〜</span>
+                    <input type="number" id="filter-max" class="filter-input-sm" placeholder="金額 上限" min="0">
+                </div>
+                <div class="filter-row">
+                    <input type="date" id="filter-from" class="filter-input-sm">
+                    <span class="filter-tilde">〜</span>
+                    <input type="date" id="filter-to" class="filter-input-sm">
+                </div>
+                <div class="filter-row filter-row-actions">
+                    <select id="filter-sort" class="filter-select">
+                        <option value="date-desc">新しい順</option>
+                        <option value="date-asc">古い順</option>
+                        <option value="amount-desc">金額が大きい順</option>
+                        <option value="amount-asc">金額が小さい順</option>
+                    </select>
+                    <button type="button" class="text-cancel-button" id="btn-clear-filter">条件をクリア</button>
+                </div>
+            </div>
+
             <div class="timeline" id="expense-timeline"></div>
 
             <button class="fab" id="fab-add-expense">
@@ -110,23 +251,57 @@
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="expense-edit-id" value="">
+
+                    <!-- レシート読み取り（OCR）。失敗しても手入力にそのまま落ちる -->
+                    <div class="receipt-row">
+                        <label class="secondary-button receipt-button" for="input-receipt-image">
+                            <span class="material-icons-round">photo_camera</span>
+                            レシート・画像から読み取る
+                        </label>
+                        <input type="file" id="input-receipt-image" accept="image/*" hidden>
+                        <span class="receipt-hint" id="receipt-status"></span>
+                    </div>
+                    <div class="receipt-preview" id="receipt-preview" style="display:none;">
+                        <img id="receipt-preview-img" alt="読み取りしたレシート">
+                        <div class="receipt-warnings" id="receipt-warnings"></div>
+                    </div>
+
                     <div class="form-group">
                         <label>金額 (円)</label>
                         <input type="number" id="expense-amount" placeholder="0" min="0">
                     </div>
                     <div class="form-group">
-                        <label>カテゴリー</label>
+                        <label>カテゴリ</label>
                         <div class="select-wrapper">
                             <select id="expense-category" class="styled-select-full"></select>
                         </div>
                     </div>
                     <div class="form-group">
+                        <label>店舗（任意）</label>
+                        <input type="text" id="expense-store" placeholder="例：スーパーA" maxlength="40">
+                    </div>
+                    <div class="form-group">
                         <label>メモ（任意）</label>
-                        <input type="text" id="expense-memo" placeholder="例：スーパーで食材">
+                        <input type="text" id="expense-memo" placeholder="例：週末のまとめ買い" maxlength="60">
+                    </div>
+                    <div class="form-group">
+                        <label>品目（明細・任意）</label>
+                        <div class="items-editor">
+                            <div class="items-list" id="expense-items-list"></div>
+                            <div class="items-actions">
+                                <button type="button" class="secondary-button" id="btn-add-item">
+                                    <span class="material-icons-round">add</span>
+                                    品目を追加
+                                </button>
+                                <button type="button" class="text-cancel-button" id="btn-apply-items-total">合計を金額に入れる</button>
+                            </div>
+                            <p class="items-summary" id="items-summary"></p>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>日時</label>
-                        <div class="datetime-readonly" id="expense-datetime-display">-</div>
+                        <input type="datetime-local" id="expense-datetime" class="datetime-input">
+                        <p class="field-hint">あとから日付を直せます（レシートの日付に合わせられます）</p>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -135,23 +310,128 @@
             </div>
         </div>
 
-        <!-- カテゴリー管理モーダル -->
+        <!-- データ移行モーダル（コードをコピー／貼り付け） -->
+        <div class="modal-overlay" id="modal-transfer">
+            <div class="modal-content account-content">
+                <div class="modal-header">
+                    <h3>データ移行</h3>
+                    <button class="close-button" id="btn-close-transfer">閉じる</button>
+                </div>
+                <div class="modal-body">
+                    <div class="account-section">
+                        <h4 class="data-section-title">① 古い端末：コードをコピー</h4>
+                        <p class="data-section-desc">いまのデータ（支出・予算・カテゴリ・マイルーム）を1つのコードにまとめました。コピーして、メモ・LINE・メールなどで新しい端末に送ってください。</p>
+                        <textarea class="transfer-textarea" id="transfer-code-out" rows="4" readonly spellcheck="false"></textarea>
+                        <p class="field-hint" id="transfer-code-size"></p>
+                        <button class="primary-button" id="btn-copy-transfer-code">コードをコピー</button>
+                        <div class="data-action-row transfer-import-row">
+                            <button class="secondary-button" id="btn-save-transfer-file">
+                                <span class="material-icons-round">file_download</span>
+                                ファイルに保存
+                            </button>
+                            <button class="secondary-button" id="btn-share-transfer-code" style="display:none;">
+                                <span class="material-icons-round">ios_share</span>
+                                共有
+                            </button>
+                        </div>
+                        <p class="field-hint">コードが長くてチャットに貼れないときは、ファイルに保存して送ってください。</p>
+                    </div>
+
+                    <div class="account-section">
+                        <h4 class="data-section-title">② 新しい端末：コードを貼り付け</h4>
+                        <textarea class="transfer-textarea" id="transfer-code-in" rows="4" placeholder="ここにコードを貼り付け（YOYU1 で始まる文字列）" spellcheck="false" autocomplete="off"></textarea>
+                        <div class="data-action-row">
+                            <button class="secondary-button" id="btn-paste-transfer-code">
+                                <span class="material-icons-round">content_paste</span>
+                                クリップボードから貼り付け
+                            </button>
+                            <label class="secondary-button" for="input-transfer-file">
+                                <span class="material-icons-round">file_upload</span>
+                                ファイルから読み込む
+                            </label>
+                            <input type="file" id="input-transfer-file" accept=".txt,text/plain" hidden>
+                        </div>
+                        <div class="data-action-row transfer-import-row">
+                            <button class="primary-button-sm" id="btn-import-transfer-replace">すべて置き換える</button>
+                            <button class="secondary-button" id="btn-import-transfer-merge">いまのデータと統合</button>
+                        </div>
+                        <p class="field-hint">新しい端末は「すべて置き換える」がおすすめです。すでに両方の端末に記録がある場合は「統合」を選ぶと、記録を足し合わせます（マイルームは新しい方が残ります）。</p>
+                        <p class="data-import-status" id="transfer-status"></p>
+                    </div>
+
+                    <p class="field-hint">※ レシートの写真と、OCR の API キーはコードに含まれません。コードには家計データがそのまま入っているので、他の人には見せないでください。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- AIプランナーモーダル -->
+        <div class="modal-overlay" id="modal-planner">
+            <div class="modal-content planner-content">
+                <div class="modal-header">
+                    <h3>貯金プランナー</h3>
+                    <button class="close-button" id="btn-close-planner">閉じる</button>
+                </div>
+                <div class="modal-body">
+                    <p class="data-section-desc">月収とほしいものの金額を入れると、あと何日で買えるかを計算します。支出は実際の記録から自動で見積もります。</p>
+
+                    <div class="form-group">
+                        <label>月収（手取り）</label>
+                        <input type="number" id="planner-income" placeholder="250000" min="0" step="1000">
+                    </div>
+                    <div class="form-group">
+                        <label>ほしいものの金額</label>
+                        <input type="number" id="planner-target" placeholder="80000" min="0" step="1000">
+                    </div>
+                    <div class="form-group">
+                        <label>月の支出</label>
+                        <input type="number" id="planner-expense" placeholder="200000" min="0" step="1000">
+                        <p class="field-hint" id="planner-expense-hint"></p>
+                    </div>
+                    <div class="form-group">
+                        <label>難易度を選ぶ</label>
+                        <div class="difficulty-row" id="planner-difficulty">
+                            <button type="button" class="difficulty-card" data-difficulty="easy">
+                                <span class="material-icons-round">eco</span>
+                                <strong>かんたん</strong>
+                                <small>ゆるく節約して貯める</small>
+                            </button>
+                            <button type="button" class="difficulty-card is-active" data-difficulty="normal">
+                                <span class="material-icons-round">balance</span>
+                                <strong>ふつう</strong>
+                                <small>バランスよく節約する</small>
+                            </button>
+                            <button type="button" class="difficulty-card" data-difficulty="hard">
+                                <span class="material-icons-round">local_fire_department</span>
+                                <strong>むずかしい</strong>
+                                <small>しっかり節約して貯める</small>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button class="primary-button" id="btn-run-planner">シミュレーションする</button>
+
+                    <div class="planner-result" id="planner-result"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- カテゴリ管理モーダル -->
         <div class="modal-overlay" id="modal-category">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>カテゴリー設定</h3>
+                    <h3>カテゴリ設定</h3>
                     <button class="close-button" id="btn-close-category">閉じる</button>
                 </div>
                 <div class="modal-body">
                     <div class="category-manage-list" id="category-manage-list"></div>
                     <button class="add-category-trigger" id="btn-show-add-category">
                         <span class="material-icons-round">add_circle</span>
-                        新しいカテゴリーを追加
+                        新しいカテゴリを追加
                     </button>
                     <div class="category-edit-form" id="category-edit-form">
                         <input type="hidden" id="cat-edit-id" value="">
                         <div class="form-group">
-                            <label>カテゴリー名</label>
+                            <label>カテゴリ名</label>
                             <input type="text" id="cat-form-name" placeholder="例：交際費">
                         </div>
                         <div class="category-form-actions">
@@ -159,6 +439,31 @@
                             <button class="primary-button-sm" id="btn-save-category">追加する</button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- カテゴリ別予算モーダル -->
+        <div class="modal-overlay" id="modal-category-budget">
+            <div class="modal-content category-budget-content">
+                <div class="modal-header">
+                    <h3>カテゴリ別予算</h3>
+                    <button class="close-button" id="btn-close-category-budget">閉じる</button>
+                </div>
+                <div class="modal-body">
+                    <p class="data-section-desc" id="category-budget-desc">今月、カテゴリごとに使える金額を決めます。空欄のカテゴリは「決めない」になります。</p>
+                    <div class="category-budget-actions">
+                        <button class="secondary-button" id="btn-suggest-category-budget" type="button">
+                            <span class="material-icons-round">auto_fix_high</span>
+                            過去3か月から提案
+                        </button>
+                        <span class="category-budget-total" id="category-budget-total"></span>
+                    </div>
+                    <div class="category-budget-list" id="category-budget-list"></div>
+                    <p class="field-hint">カテゴリ予算の合計が総予算を超えても保存できます。超えている場合は赤く表示します。</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="primary-button" id="btn-save-category-budget" type="button">この内容で保存</button>
                 </div>
             </div>
         </div>
@@ -172,20 +477,120 @@
                 </div>
                 <div class="modal-body">
                     <div class="data-section">
+                        <h4 class="data-section-title">設定</h4>
+                        <label class="pref-row">
+                            <span>効果音</span>
+                            <input type="checkbox" id="pref-sound" class="pref-switch">
+                        </label>
+                        <label class="pref-row">
+                            <span>振動（対応する端末のみ）</span>
+                            <input type="checkbox" id="pref-haptics" class="pref-switch">
+                        </label>
+                        <div class="data-action-row">
+                            <button class="secondary-button" id="btn-replay-onboarding">
+                                <span class="material-icons-round">help_outline</span>
+                                使い方をもう一度見る
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="data-section">
                         <h4 class="data-section-title">バックアップ</h4>
-                        <p class="data-section-desc">記録した支出、ポイント・所持アイテム・部屋のレイアウトをまとめて1つのCSVファイルとして書き出したり、読み込んだりできます。</p>
+                        <p class="data-section-desc">記録した支出をCSVファイルとして書き出したり、CSVファイルから読み込んだりできます。</p>
                         <div class="data-action-row">
                             <button class="secondary-button" id="btn-export-csv">
-                                <span class="material-icons-round">file_upload</span>
+                                <span class="material-icons-round">file_download</span>
                                 CSVを書き出す
                             </button>
                             <label class="secondary-button" for="input-import-csv">
-                                <span class="material-icons-round">file_download</span>
+                                <span class="material-icons-round">file_upload</span>
                                 CSVを読み込む
                             </label>
                             <input type="file" id="input-import-csv" accept=".csv,text/csv" hidden>
+                            <button class="secondary-button" id="btn-export-unified-csv" type="button">
+                                <span class="material-icons-round">inventory_2</span>
+                                全部入りCSVを書き出す
+                            </button>
                         </div>
                         <p class="data-import-status" id="data-import-status"></p>
+                    </div>
+
+                    <div class="data-section">
+                        <h4 class="data-section-title">バックアップファイル（端末の引っ越し）</h4>
+                        <p class="data-section-desc">CSV と違い、品目・店舗・予算・部屋の情報まで欠けずに移せます。新しい端末で読み込むと、いまの記録と自動で統合されます（上書きされません）。</p>
+                        <div class="data-action-row">
+                            <button class="secondary-button" id="btn-export-backup">
+                                <span class="material-icons-round">save</span>
+                                バックアップを書き出す
+                            </button>
+                            <label class="secondary-button" for="input-import-backup">
+                                <span class="material-icons-round">restore</span>
+                                バックアップを読み込む
+                            </label>
+                            <input type="file" id="input-import-backup" accept=".json,application/json" hidden>
+                        </div>
+                        <p class="data-import-status" id="data-backup-status"></p>
+                    </div>
+
+                    <div class="data-section">
+                        <h4 class="data-section-title">データ移行（コードで引っ越し）</h4>
+                        <p class="data-section-desc">データを1つのコードにしてコピーし、新しい端末に貼り付けるだけで移せます。</p>
+                        <div class="data-action-row">
+                            <button class="secondary-button" id="btn-open-transfer">
+                                <span class="material-icons-round">sync_alt</span>
+                                データ移行を開く
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="data-section">
+                        <h4 class="data-section-title">レシート読み取り（OCR）の設定</h4>
+                        <p class="data-section-desc">自分の APIキー を入れると、レシートを撮影して自動入力できます。キーはこの端末にだけ保存されます。読み取り時のみ、画像が選択した事業者へ送信されます。</p>
+
+                        <div class="form-group">
+                            <label>サービス</label>
+                            <div class="select-wrapper">
+                                <select id="ocr-provider" class="styled-select-full">
+                                    <option value="gemini">Google Gemini</option>
+                                    <option value="openai">OpenAI</option>
+                                    <option value="custom">その他（OpenAI 互換のエンドポイント）</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>APIキー</label>
+                            <input type="password" id="ocr-api-key" placeholder="ここに貼り付け" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label>モデル名</label>
+                            <input type="text" id="ocr-model" placeholder="gemini-2.0-flash">
+                        </div>
+                        <div class="form-group" id="ocr-endpoint-group" style="display:none;">
+                            <label>エンドポイント</label>
+                            <input type="text" id="ocr-endpoint" placeholder="https://api.example.com/v1">
+                        </div>
+                        <div class="data-action-row">
+                            <button class="primary-button-sm" id="btn-save-ocr">保存</button>
+                            <button class="secondary-button" id="btn-test-ocr">接続テスト</button>
+                        </div>
+                        <p class="data-import-status" id="ocr-status"></p>
+                    </div>
+
+                    <div class="data-section">
+                        <h4 class="data-section-title">マイルームのバックアップ</h4>
+                        <p class="data-section-desc">ポイント・所持アイテム・部屋のレイアウトをCSVで書き出し／読み込みできます。</p>
+                        <div class="data-action-row">
+                            <button class="secondary-button" id="btn-export-room-csv">
+                                <span class="material-icons-round">file_download</span>
+                                CSVを書き出す
+                            </button>
+                            <label class="secondary-button" for="input-import-room-csv">
+                                <span class="material-icons-round">file_upload</span>
+                                CSVを読み込む
+                            </label>
+                            <input type="file" id="input-import-room-csv" accept=".csv,text/csv" hidden>
+                        </div>
+                        <p class="data-import-status" id="data-import-room-status"></p>
                     </div>
                     <div class="data-section">
                         <h4 class="data-section-title">リセット</h4>
@@ -256,6 +661,58 @@
             </div>
         </div>
 
+        <!-- ガチャ・コレクション -->
+        <div class="modal-overlay" id="modal-gacha">
+            <div class="modal-content gacha-content">
+                <div class="modal-header">
+                    <h3>ガチャ</h3>
+                    <button class="close-button" id="btn-close-gacha">閉じる</button>
+                </div>
+                <div class="shop-currency-row">
+                    <span class="material-icons-round">toll</span>
+                    <span id="gacha-currency-amount">0</span>
+                    <span class="shop-currency-unit">pt 所持</span>
+                </div>
+                <div class="gacha-tabs">
+                    <button type="button" class="gacha-tab is-active" id="tab-gacha-pull">ひく</button>
+                    <button type="button" class="gacha-tab" id="tab-gacha-collection">コレクション <span id="gacha-collection-count"></span></button>
+                </div>
+                <div class="modal-body">
+                    <div id="gacha-pane-pull">
+                        <div class="gacha-machine" aria-hidden="true">
+                            <svg viewBox="0 0 160 190" width="150" height="178">
+                                <rect x="30" y="112" width="100" height="66" rx="8" fill="#e8647a" stroke="#191b1d" stroke-width="4"/>
+                                <rect x="52" y="128" width="56" height="20" rx="4" fill="#fff7ec" stroke="#191b1d" stroke-width="3"/>
+                                <circle cx="80" cy="162" r="9" fill="#ffd978" stroke="#191b1d" stroke-width="3"/>
+                                <circle cx="80" cy="62" r="52" fill="#dff2fa" stroke="#191b1d" stroke-width="4"/>
+                                <circle cx="56" cy="74" r="13" fill="#f7bfd0" stroke="#191b1d" stroke-width="3"/>
+                                <circle cx="82" cy="84" r="13" fill="#ffd978" stroke="#191b1d" stroke-width="3"/>
+                                <circle cx="106" cy="70" r="13" fill="#8fd0ee" stroke="#191b1d" stroke-width="3"/>
+                                <circle cx="70" cy="52" r="12" fill="#b6e3a0" stroke="#191b1d" stroke-width="3"/>
+                                <circle cx="96" cy="46" r="12" fill="#f7bfd0" stroke="#191b1d" stroke-width="3"/>
+                                <ellipse cx="60" cy="34" rx="12" ry="6" fill="#fff" opacity=".6" transform="rotate(-35 60 34)"/>
+                                <rect x="40" y="178" width="80" height="8" rx="3" fill="#191b1d"/>
+                            </svg>
+                        </div>
+                        <p class="data-section-desc gacha-lead">ログインや記録でためたポイントで、あたらしい仲間やお部屋が手に入ります。</p>
+                        <p class="gacha-remain" id="gacha-remain"></p>
+                        <div class="gacha-odds" id="gacha-odds"></div>
+                        <button class="primary-button" id="btn-gacha-pull">ガチャをひく</button>
+                        <p class="data-import-status" id="gacha-status"></p>
+                        <p class="field-hint">まだ持っていないものだけが出ます（ダブりなし）。1回 <span id="gacha-cost">1,000</span>pt です。</p>
+                    </div>
+                    <div id="gacha-pane-collection" style="display:none;">
+                        <p class="field-hint">持っているものをタップすると切りかえられます。</p>
+                        <h4 class="data-section-title">ペット</h4>
+                        <div class="collection-grid" id="collection-pets"></div>
+                        <h4 class="data-section-title">部屋（マップ）</h4>
+                        <div class="collection-grid collection-grid-wide" id="collection-maps"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="gacha-overlay" id="gacha-overlay"></div>
+        </div>
+
         <!-- ショップモーダル（フルスクリーン） -->
         <div class="modal-overlay shop-overlay" id="modal-shop">
             <div class="modal-content shop-content">
@@ -267,10 +724,6 @@
                     <span class="material-icons-round">toll</span>
                     <span id="shop-currency-amount">0</span>
                     <span class="shop-currency-unit">pt 所持</span>
-                </div>
-                <div class="shop-tabs">
-                    <button class="shop-tab-btn active" data-tab="furniture">家具</button>
-                    <button class="shop-tab-btn" data-tab="wallpaper">壁紙</button>
                 </div>
                 <div class="modal-body">
                     <div class="shop-grid" id="shop-grid"></div>
@@ -299,6 +752,10 @@
         </div>
 
     </div>
+
     <script src="app.js"></script>
+    <script src="cloud.js"></script>
+    <script src="onboarding.js"></script>
+    <script src="gacha.js"></script>
 </body>
 </html>

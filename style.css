@@ -4,22 +4,38 @@
    モノクロベース + アクセント1色 + 警告1色
 ========================================== */
 :root {
-    --bg: #fef6e4;
-    --surface: #ffffff;
-    --ink: #191b1d;
-    --ink-soft: #5c6167;
-    --muted: #9ea3a9;
-    --line: #e7e6e2;
-    --line-strong: #d7d6d1;
-    --accent: #2e3f56;
-    --accent-soft: #6b7a90;
-    --danger: #b0473c;
+    --bg: #f6efe2;
+    --surface: #fffdf8;
+    --ink: #2d2a26;
+    --ink-soft: #5f594f;
+    --muted: #6f675b;
+    --line: #e6dccb;
+    --line-strong: #d8ccb7;
+    --accent: #5f6d4e;
+    --accent-soft: #5f6d4e;
+    --danger: #a34c3d;
+    --warn: #8f632b;
 
-    --font-display: 'Silkscreen', 'M PLUS Rounded 1c', sans-serif;
-    --font-mono: 'Silkscreen', 'M PLUS Rounded 1c', monospace;
+    /* --- フォント ---
+       本文は丸ゴシック、見出しと「余裕」の数字だけ手書き風にして、
+       生活帳のような温度を出す。 */
+    --font-display: 'M PLUS Rounded 1c', sans-serif;
+    --font-mono: 'M PLUS Rounded 1c', sans-serif;
+    --font-pixel: 'Silkscreen', 'M PLUS Rounded 1c', sans-serif;
+    --font-hand: 'Klee One', 'M PLUS Rounded 1c', sans-serif;
+
+    /* --- 文字サイズの基準 ---
+       rem は html の font-size を基準にする。ここを上げると
+       全体が比例して読みやすくなる（最小値の底上げは最下部で行う）。 */
+    --fs-base: 18px;
 
     /* Maintain wallpaper ratio (1272 / 709) */
     --room-ratio: 1.794; 
+}
+
+html {
+    /* 0.68rem が 12.2px 相当になる。以前は 16px 基準で 10.9px だった。 */
+    font-size: var(--fs-base);
 }
 
 * {
@@ -35,9 +51,11 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background-color: #1c1d1f;
-    background-image: url("assets/main_background.jpg");
-    background-size: cover;
+    background-color: var(--bg);
+    /* 以前の main_background.jpg（ほぼ無地で 236KB）を CSS の光と紙の陰影に置き換え */
+    background-image:
+        radial-gradient(1200px 800px at 18% -10%, rgba(255, 252, 244, 0.95) 0%, rgba(255, 252, 244, 0) 62%),
+        radial-gradient(900px 700px at 108% 108%, rgba(95, 109, 78, 0.10) 0%, rgba(95, 109, 78, 0) 58%);
     background-position: center;
     background-repeat: no-repeat;
     position: fixed;
@@ -79,6 +97,53 @@ html, body {
     gap: 2px;
 }
 
+.header-more {
+    position: relative;
+}
+
+.header-more-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 184px;
+    padding: 7px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 16px 36px rgba(45, 42, 38, 0.14);
+    z-index: 60;
+}
+
+.header-more-menu.open {
+    display: block;
+}
+
+.more-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.more-item:hover {
+    background: rgba(95, 109, 78, 0.09);
+}
+
+.more-item .material-icons-round {
+    font-size: 20px;
+    color: var(--accent);
+}
+
 .icon-button {
     background: none;
     border: none;
@@ -87,14 +152,14 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
     transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .icon-button:hover {
-    background: rgba(0,0,0,0.05);
+    background: rgba(95, 109, 78, 0.09);
     color: var(--ink);
 }
 
@@ -108,7 +173,7 @@ html, body {
     align-items: center;
     gap: 5px;
     padding: 7px 12px;
-    background: rgba(46, 63, 86, 0.08);
+    background: rgba(95, 109, 78, 0.10);
     border-radius: 20px;
     color: var(--accent);
     font-size: 0.8rem;
@@ -146,10 +211,11 @@ html, body {
 }
 
 .section-title-bar h2 {
-    font-size: 0.68rem;
-    font-weight: 500;
-    color: var(--muted);
-    letter-spacing: 0.1em;
+    font-family: var(--font-hand);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: 0.03em;
     white-space: nowrap;
 }
 
@@ -202,9 +268,10 @@ html, body {
     width: 100%;
     aspect-ratio: var(--room-ratio);
     max-height: 50vh;
-    border-radius: 16px;
+    border-radius: 18px;
     overflow: hidden;
-    border: 1px solid var(--line-strong);
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 28px rgba(45, 42, 38, 0.08);
     margin: 0 auto 6px auto;
 }
 
@@ -245,7 +312,7 @@ html, body {
     width: 143%;
     height: 100%;
     flex-shrink: 0;
-    background-image: url("assets/wallpaper.jpg");
+    background-image: var(--room-wallpaper, url("assets/wallpaper.jpg"));
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center bottom;
@@ -382,11 +449,11 @@ html, body {
     right: 8px;
     z-index: 100;
     box-sizing: border-box;
-    background: rgba(18, 22, 36, 0.92);
-    border: 3px solid #fff;
-    box-shadow: 0 0 0 2px #12162a, 0 6px 16px rgba(0,0,0,0.35);
-    border-radius: 3px;
-    padding: 10px 14px;
+    background: rgba(255, 253, 248, 0.94);
+    border: 1px solid var(--line-strong);
+    box-shadow: 0 8px 20px rgba(45, 42, 38, 0.10);
+    border-radius: 12px;
+    padding: 9px 13px;
     opacity: 0;
     transform: translateY(-6px);
     pointer-events: none;
@@ -398,11 +465,11 @@ html, body {
 }
 .room-dialogue-box p {
     margin: 0;
-    font-family: 'Silkscreen', 'M PLUS Rounded 1c', sans-serif;
-    font-size: 0.66rem;
-    line-height: 1.8;
+    font-family: var(--font-hand);
+    font-size: 0.9rem;
+    line-height: 1.7;
     letter-spacing: 0.02em;
-    color: #fff;
+    color: var(--ink);
     text-align: left;
 }
 
@@ -424,14 +491,14 @@ html, body {
 .pet-selection-hint { text-align: center; color: var(--muted); font-size: 0.65rem; margin-top: 14px; }
 .petname-content { max-width: 430px; }
 .petname-hero { text-align: center; padding: 24px 24px 8px; }
-.petname-icon-wrap { width: 88px; height: 88px; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; background: rgba(46,63,86,0.06); border-radius: 24px; }
+.petname-icon-wrap { width: 88px; height: 88px; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; background: rgba(95,109,78,0.07); border-radius: 24px; }
 .petname-icon-wrap img { width: 70px; height: 70px; object-fit: contain; }
 .petname-kicker { display: block; color: var(--muted); font-size: 0.52rem; letter-spacing: 0.16em; margin-bottom: 6px; }
 .petname-hero h3 { font-size: 1rem; color: var(--ink); margin-bottom: 7px; }
 .petname-hero p { color: var(--ink-soft); font-size: 0.65rem; line-height: 1.6; }
 .petname-label { display: block; font-size: 0.64rem; color: var(--ink-soft); margin-bottom: 6px; }
 .pet-name-input { width: 100%; border: 1px solid var(--line-strong); border-radius: 12px; padding: 12px 13px; background: #fff; color: var(--ink); outline: none; font-size: 0.9rem; }
-.pet-name-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(46,63,86,0.08); }
+.pet-name-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(95,109,78,0.10); }
 .petname-confirm { width: 100%; margin-top: 12px; }
 
 /* ==========================================
@@ -469,7 +536,7 @@ html, body {
     width: 143%;
     height: 100%;
     flex-shrink: 0;
-    background-image: url("assets/wallpaper.jpg");
+    background-image: var(--room-wallpaper, url("assets/wallpaper.jpg"));
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center bottom;
@@ -545,26 +612,44 @@ html, body {
 }
 
 /* ==========================================
-   予算サマリー — 台帳ヘッダー風、箱を使わない
+   予算サマリー — 紙のカードに「今月の余裕」を大きく
 ========================================== */
 .budget-box {
-    padding: 10px 0 22px 0;
-    border-bottom: 1px solid var(--line-strong);
-    margin-bottom: 4px;
+    padding: 18px 18px 16px 18px;
+    margin: 8px 0 14px 0;
+    background: rgba(255, 253, 248, 0.82);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: 0 8px 26px rgba(45, 42, 38, 0.055);
 }
 
 .budget-box-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
+    align-items: flex-start;
+    margin-bottom: 6px;
+}
+
+.budget-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.budget-hero-label {
+    font-family: var(--font-hand);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.06em;
 }
 
 .budget-box-label {
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     color: var(--muted);
     font-weight: 500;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
 }
 
 .budget-edit-btn {
@@ -593,17 +678,17 @@ html, body {
 
 .budget-amount-row {
     font-family: var(--font-mono);
-    font-size: 1.9rem;
+    font-size: 1rem;
     font-weight: 500;
-    color: var(--ink);
-    letter-spacing: -0.02em;
+    color: var(--ink-soft);
+    letter-spacing: -0.01em;
     font-variant-numeric: tabular-nums;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 .summary-slash {
     font-family: var(--font-mono);
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     color: var(--muted);
     margin: 0 4px;
     font-weight: 400;
@@ -611,31 +696,32 @@ html, body {
 
 .summary-unit {
     font-family: var(--font-display);
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     color: var(--muted);
     margin-left: 5px;
     letter-spacing: 0.02em;
 }
 
 .budget-progress-track {
-    height: 4px;
-    background: var(--line-strong);
-    overflow: visible;
+    height: 6px;
+    background: var(--line);
+    border-radius: 999px;
+    overflow: hidden;
 }
 
 .budget-progress-fill {
-    height: 5px;
-    margin-top: -0.5px;
+    height: 100%;
     width: 0%;
+    border-radius: 999px;
     background: var(--accent);
     transition: width 0.35s ease, background-color 0.3s ease;
 }
 
 .budget-box.state-warn .budget-progress-fill {
-    background: var(--danger);
+    background: var(--warn);
 }
 .budget-box.state-warn .budget-remaining-text {
-    color: var(--danger);
+    color: var(--warn);
 }
 
 .budget-box.state-over .budget-progress-fill {
@@ -646,11 +732,14 @@ html, body {
 }
 
 .budget-remaining-text {
-    font-size: 0.7rem;
-    color: var(--ink-soft);
-    margin-top: 12px;
-    font-family: var(--font-mono);
-    letter-spacing: -0.01em;
+    font-family: var(--font-hand);
+    font-size: clamp(1.7rem, 7.2vw, 2.15rem);
+    font-weight: 600;
+    line-height: 1.15;
+    color: var(--ink);
+    margin: 0 0 14px 0;
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
 }
 
 .budget-box-edit {
@@ -703,10 +792,11 @@ html, body {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin: 18px 0 2px 0;
-    color: var(--muted);
-    font-size: 0.62rem;
-    letter-spacing: 0.06em;
+    margin: 20px 0 4px 0;
+    color: var(--accent);
+    font-family: var(--font-hand);
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
 }
 
 .timeline-date-divider:first-child {
@@ -722,8 +812,8 @@ html, body {
     justify-content: space-between;
     align-items: flex-start;
     gap: 12px;
-    padding: 13px 0;
-    border-bottom: 1px solid var(--line);
+    padding: 14px 0;
+    border-bottom: 1px dashed var(--line-strong);
 }
 
 .card-info {
@@ -734,9 +824,14 @@ html, body {
 }
 
 .category-badge {
-    font-size: 0.6rem;
-    color: var(--accent-soft);
-    letter-spacing: 0.07em;
+    align-self: flex-start;
+    font-size: 0.72rem;
+    color: var(--accent);
+    background: rgba(95, 109, 78, 0.09);
+    border: 1px solid rgba(95, 109, 78, 0.16);
+    border-radius: 999px;
+    padding: 2px 8px;
+    letter-spacing: 0.05em;
     font-weight: 500;
 }
 
@@ -1023,15 +1118,6 @@ html, body {
     border-bottom-color: var(--accent);
 }
 
-.datetime-readonly {
-    width: 100%;
-    padding: 7px 0;
-    border-bottom: 1px solid var(--line);
-    background: none;
-    color: var(--muted);
-    font-size: 0.8rem;
-    font-family: var(--font-mono);
-}
 
 .modal-footer {
     margin-top: 6px;
@@ -1202,13 +1288,6 @@ html, body {
     color: var(--ink-soft);
     line-height: 1.6;
     margin-bottom: 14px;
-}
-
-.data-subsection-title {
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: var(--ink-soft);
-    margin: 14px 0 8px;
 }
 
 .data-action-row {
@@ -1394,30 +1473,6 @@ html, body {
     border-bottom: 1px solid var(--line);
 }
 
-.shop-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 14px;
-}
-
-.shop-tab-btn {
-    flex: 1;
-    padding: 8px 0;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    background: var(--surface);
-    color: var(--ink-soft);
-    font-family: var(--font-display);
-    font-size: 0.78rem;
-    cursor: pointer;
-}
-
-.shop-tab-btn.active {
-    background: var(--ink);
-    color: #fff;
-    border-color: var(--ink);
-}
-
 .shop-currency-unit {
     font-family: var(--font-display);
     color: var(--muted);
@@ -1493,17 +1548,6 @@ html, body {
     background: var(--line-strong);
     color: var(--muted);
     cursor: not-allowed;
-}
-
-.wallpaper-card.active {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent) inset;
-}
-
-.wallpaper-select-btn:disabled {
-    background: var(--accent-soft);
-    color: #fff;
-    opacity: 0.8;
 }
 
 .shop-empty-hint {
@@ -1750,10 +1794,1615 @@ html, body {
   .modal-content { max-height: min(82%, calc(100dvh - env(safe-area-inset-top) - 12px)); }
 }
 
-/* 予算使用率表示（追加） */
-.budget-usage-percent {
-    margin-left: auto;
-    margin-right: 8px;
-    color: var(--ink-soft);
-    font-size: 1.2rem;
+/* ==========================================
+   ▼ v2.15 追加分
+   ========================================== */
+
+/* ------------------------------------------------------------
+   可読性の下限を保証する
+   0.62rem 以下だった小さな文字を底上げする。
+   影響範囲を1か所にまとめて確認・ロールバックできるようにここへ
+   集約した。各ルールを直接直したあとは、このブロックごと消してよい。
+   ------------------------------------------------------------ */
+.category-badge,
+.badge-time,
+.timeline-date-divider,
+.room-level,
+.pet-name-tag,
+.petname-kicker,
+.petname-label,
+.petname-hero p,
+.pet-selection-hint,
+.form-group label,
+.data-storage-info,
+.room-dialogue-box p,
+.room-editor-hint,
+.room-editor-tray-label,
+.shop-buy-btn,
+.data-import-status {
+    font-size: 0.75rem;   /* 18px 基準で 13.5px（以前は約10px） */
 }
+
+/* 大きい金額は元の見た目サイズを維持する。
+   html を 18px にした分そのままだと拡大しすぎて、
+   桁が多いときに行からあふれるため。 */
+.budget-amount-row { font-size: 1.7rem; }
+.summary-slash { font-size: 1rem; }
+.daily-login-amount { font-size: 1.45rem; }
+@media (max-width: 400px) {
+    .budget-amount-row { font-size: 1.5rem; }
+}
+
+/* 狭い画面で右側のヒント文字が詰まりすぎないように */
+.room-editor-hint { max-width: 220px; }
+
+/* 内訳の固定幅は、文字を大きくすると省略されるので広げる */
+.breakdown-label { width: 84px; font-size: 0.75rem; }
+.breakdown-value { width: 112px; font-size: 0.75rem; }
+
+/* 金額は桁が揃ってほしいので等幅数字を維持する */
+.budget-amount-row,
+.main-amount,
+.summary-slash,
+.breakdown-value,
+.badge-time,
+.daily-login-amount,
+.shop-card-price,
+.card-item-price {
+    font-variant-numeric: tabular-nums;
+}
+
+/* タップ領域を指で押せる大きさに
+   （アイコンは大きすぎないようにしつつ、判定範囲だけ広げる） */
+.card-actions span.material-icons-round,
+.category-manage-actions span.material-icons-round {
+    font-size: 20px;
+    padding: 8px;
+    margin: -8px;
+    border-radius: 8px;
+}
+.card-actions { gap: 6px; }
+.category-manage-actions { gap: 10px; }
+
+/* ------------------------------------------------------------
+   表示月の切り替え（過去月の閲覧）
+   ------------------------------------------------------------ */
+.month-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 0 2px 0;
+}
+
+.month-nav-btn {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+.month-nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--ink); }
+.month-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.month-nav-btn span.material-icons-round { font-size: 20px; }
+
+.month-nav-label {
+    font-size: 0.9rem;
+    color: var(--ink);
+    font-weight: 500;
+    padding: 0 2px;
+    white-space: nowrap;
+}
+
+.month-nav-today {
+    margin-left: auto;
+    padding: 6px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-family: var(--font-display);
+    cursor: pointer;
+}
+
+.month-past-note {
+    display: none;
+    font-size: 0.75rem;
+    color: var(--danger);
+    margin-top: 2px;
+}
+
+/* ------------------------------------------------------------
+   店舗・品目（明細）
+   ------------------------------------------------------------ */
+.card-store {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.card-store span.material-icons-round { font-size: 14px; color: var(--muted); }
+
+.card-detail-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    align-self: flex-start;
+    margin-top: 5px;
+    padding: 5px 10px 5px 9px;
+    border: 1px solid var(--line-strong);
+    border-radius: 20px;
+    background: none;
+    color: var(--accent-soft);
+    font-size: 0.72rem;
+    font-family: var(--font-display);
+    cursor: pointer;
+}
+.card-detail-toggle span.material-icons-round {
+    font-size: 16px;
+    transition: transform 0.15s ease;
+}
+.card.items-open .card-detail-toggle span.material-icons-round { transform: rotate(180deg); }
+
+.card-items {
+    margin-top: 6px;
+    padding-left: 10px;
+    border-left: 2px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.card-items[hidden] { display: none; }
+
+.card-item-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+}
+.card-item-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.card-item-price {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+}
+
+/* ------------------------------------------------------------
+   品目エディタ（支出モーダル内）
+   ------------------------------------------------------------ */
+.items-editor {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.015);
+}
+
+.items-list { display: flex; flex-direction: column; gap: 6px; }
+
+.item-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.item-name {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.85rem;
+    font-family: var(--font-display);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+.item-name:focus { border-color: var(--accent); }
+
+.item-price {
+    width: 94px;
+    flex-shrink: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+.item-price:focus { border-color: var(--accent); }
+
+.item-unit { font-size: 0.75rem; color: var(--muted); flex-shrink: 0; }
+
+.item-remove {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.item-remove:hover { background: rgba(176, 71, 60, 0.08); color: var(--danger); }
+.item-remove span.material-icons-round { font-size: 18px; }
+
+.items-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.items-summary {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    min-height: 1em;
+}
+
+/* ------------------------------------------------------------
+   共通の小物
+   ------------------------------------------------------------ */
+.field-hint {
+    margin-top: 6px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.datetime-input {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.9rem;
+    font-family: var(--font-mono);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+.datetime-input:focus { border-color: var(--accent); }
+
+.planner-icon { color: var(--accent); }
+
+/* ------------------------------------------------------------
+   貯金プランカード（ホーム）
+   ------------------------------------------------------------ */
+.plan-card {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(95,109,78,0.08), rgba(95,109,78,0.02));
+}
+
+.plan-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.plan-card-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8rem;
+    color: var(--accent);
+    font-weight: 500;
+}
+.plan-card-title span.material-icons-round { font-size: 17px; }
+
+.plan-card-clear {
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-family: var(--font-display);
+    cursor: pointer;
+    padding: 4px 6px;
+}
+.plan-card-clear:hover { color: var(--danger); }
+
+.plan-card-goal {
+    font-size: 0.82rem;
+    color: var(--ink);
+    margin-bottom: 10px;
+}
+
+.plan-progress-track {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--line);
+    overflow: hidden;
+}
+.plan-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.plan-card-progress {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    font-family: var(--font-mono);
+}
+
+/* ------------------------------------------------------------
+   グラフ
+   ------------------------------------------------------------ */
+.charts-box { padding-bottom: 6px; }
+
+.chart-summary {
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    margin: 2px 0 4px 0;
+    line-height: 1.6;
+    font-family: var(--font-mono);
+}
+
+.chart-block { margin-top: 14px; }
+
+.chart-block-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.chart-block-title {
+    font-size: 0.78rem;
+    color: var(--ink);
+    font-weight: 500;
+}
+
+.chart-block-note {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+}
+
+.chart-svg-wrap {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px 6px 4px 6px;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.daily-chart {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.chart-empty {
+    padding: 24px 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+
+.weekly-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+}
+.weekly-label {
+    width: 84px;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+.weekly-track {
+    flex: 1;
+    height: 8px;
+    background: var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.weekly-fill {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+.weekly-value {
+    width: 100px;
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    white-space: nowrap;
+}
+
+.compare-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line);
+}
+.compare-row:last-child { border-bottom: none; }
+
+.compare-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.compare-tag {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--ink-soft);
+}
+.compare-tag.is-up { background: rgba(176, 71, 60, 0.12); color: var(--danger); }
+.compare-tag.is-down { background: rgba(46, 63, 86, 0.1); color: var(--accent); }
+.compare-tag.is-new { background: rgba(46, 63, 86, 0.1); color: var(--accent); }
+
+.compare-value {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+}
+
+/* ------------------------------------------------------------
+   絞り込み
+   ------------------------------------------------------------ */
+.filter-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 5px 11px 5px 8px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink-soft);
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-family: var(--font-display);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+.filter-toggle-btn:hover { border-color: var(--accent); color: var(--ink); }
+.filter-toggle-btn span.material-icons-round { font-size: 16px; }
+
+.filter-count {
+    font-size: 0.72rem;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.filter-panel {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    margin-bottom: 6px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.6);
+}
+.filter-panel.open { display: flex; }
+
+.filter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.filter-row-actions { justify-content: space-between; }
+
+.filter-input,
+.filter-select,
+.filter-input-sm {
+    padding: 9px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.82rem;
+    font-family: var(--font-display);
+    outline: none;
+    min-width: 0;
+    transition: border-color 0.15s ease;
+}
+.filter-input { flex: 1; }
+.filter-select { flex: 1; appearance: none; -webkit-appearance: none; cursor: pointer; }
+.filter-input-sm { flex: 1; }
+.filter-input:focus,
+.filter-select:focus,
+.filter-input-sm:focus { border-color: var(--accent); }
+
+.filter-tilde { color: var(--muted); font-size: 0.78rem; flex-shrink: 0; }
+
+/* ------------------------------------------------------------
+   レシート読み取り
+   ------------------------------------------------------------ */
+.receipt-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.receipt-button { cursor: pointer; }
+
+.receipt-hint {
+    flex: 1;
+    min-width: 140px;
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    line-height: 1.5;
+}
+
+.receipt-preview {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 18px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.receipt-preview img {
+    width: 84px;
+    height: 110px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex-shrink: 0;
+    border: 1px solid var(--line-strong);
+}
+
+.receipt-warnings { flex: 1; min-width: 0; }
+
+.receipt-warning {
+    font-size: 0.72rem;
+    color: var(--danger);
+    line-height: 1.6;
+    margin-bottom: 4px;
+}
+.receipt-ok {
+    font-size: 0.72rem;
+    color: var(--accent);
+    line-height: 1.6;
+}
+
+/* ------------------------------------------------------------
+   AIプランナー
+   ------------------------------------------------------------ */
+.planner-content { max-width: 560px; }
+
+.difficulty-row {
+    display: flex;
+    gap: 8px;
+}
+
+.difficulty-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 6px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-family: var(--font-display);
+    text-align: center;
+    transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.difficulty-card span.material-icons-round { font-size: 22px; }
+.difficulty-card strong { font-size: 0.78rem; font-weight: 500; }
+.difficulty-card small { font-size: 0.64rem; line-height: 1.4; color: var(--muted); }
+
+.difficulty-card.is-active {
+    border-color: var(--accent);
+    background: rgba(46, 63, 86, 0.06);
+    color: var(--accent);
+}
+.difficulty-card.is-active small { color: var(--accent-soft); }
+
+.planner-result { margin-top: 20px; }
+
+.planner-result-card {
+    padding: 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(95,109,78,0.09), rgba(95,109,78,0.02));
+}
+
+.planner-result-kicker {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+
+.planner-result-goal {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+}
+
+.planner-period {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.planner-period-value {
+    font-family: var(--font-mono);
+    font-size: 1.6rem;
+    color: var(--accent);
+    font-weight: 500;
+}
+.planner-period-unit { font-size: 0.82rem; color: var(--ink-soft); }
+
+.planner-figures {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.planner-figure {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+}
+.planner-figure-label { font-size: 0.75rem; color: var(--muted); }
+.planner-figure-value {
+    font-size: 0.82rem;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.planner-block { margin-top: 18px; }
+
+.planner-sub-title {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
+.planner-sub-title span.material-icons-round { font-size: 16px; color: var(--accent); }
+
+.planner-suggestion {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+.planner-suggestion-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.planner-suggestion-name { font-size: 0.82rem; color: var(--ink); }
+.planner-suggestion-save {
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+}
+.planner-suggestion-desc { font-size: 0.72rem; color: var(--ink-soft); line-height: 1.5; }
+
+.planner-advice {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.planner-advice li {
+    position: relative;
+    padding-left: 16px;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    line-height: 1.7;
+    margin-bottom: 4px;
+}
+.planner-advice li::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 0.62em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+}
+
+.planner-error {
+    padding: 14px;
+    border: 1px solid rgba(176, 71, 60, 0.35);
+    border-radius: 12px;
+    background: rgba(176, 71, 60, 0.06);
+    color: var(--danger);
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
+
+/* ------------------------------------------------------------
+   同期コード
+   ------------------------------------------------------------ */
+.sync-code-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.sync-code {
+    flex: 1;
+    min-width: 160px;
+    padding: 10px 14px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.02);
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-align: center;
+}
+
+/* ------------------------------------------------------------
+   アカウント
+   ------------------------------------------------------------ */
+.account-icon { color: var(--accent); }
+
+.account-content { max-width: 520px; }
+
+.account-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    margin-bottom: 18px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 11px;
+}
+
+.account-tab {
+    flex: 1;
+    padding: 9px 0;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+    font-family: var(--font-display);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.account-tab.is-active {
+    background: var(--surface);
+    color: var(--accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.account-setup {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+}
+.account-setup summary {
+    font-size: 0.78rem;
+    color: var(--accent);
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+.account-setup code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.account-user-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    margin-bottom: 18px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(46, 63, 86, 0.04);
+}
+.account-user-icon { font-size: 30px; color: var(--accent); }
+.account-user-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.account-user-label { font-size: 0.7rem; color: var(--muted); }
+.account-user-email {
+    font-size: 0.85rem;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.account-section {
+    padding-top: 16px;
+    margin-top: 16px;
+    border-top: 1px solid var(--line);
+}
+.account-section:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+
+/* ============================================================
+   ▼ ペットの動作（状態機械の見た目）
+   ------------------------------------------------------------
+   素材は静止画1枚なので、動きはすべて transform で作っている。
+   スプライト画像を用意できたら、ここを差し替えるだけで済む。
+   ============================================================ */
+
+/* 歩く：左右に揺れながら小刻みに弾む */
+.pet-item.is-walking img {
+    animation: petWalkBob 0.52s ease-in-out infinite;
+}
+@keyframes petWalkBob {
+    0%, 100% { transform: translateY(0) scale(1, 1) rotate(0deg); }
+    25%      { transform: translateY(-7%) scale(0.985, 1.02) rotate(-2.5deg); }
+    50%      { transform: translateY(0) scale(1.02, 0.98) rotate(0deg); }
+    75%      { transform: translateY(-7%) scale(0.985, 1.02) rotate(2.5deg); }
+}
+
+/* 座る：沈み込んでゆっくり呼吸する */
+.pet-item.is-sitting img {
+    animation: petSitBreathe 3.4s ease-in-out infinite;
+    transform-origin: 50% 100%;
+}
+@keyframes petSitBreathe {
+    0%, 100% { transform: scale(1.05, 0.89); }
+    50%      { transform: scale(1.02, 0.94); }
+}
+
+/* 遊ぶ：小刻みに跳ねる */
+.pet-item.is-playing img {
+    animation: petPlayBounce 0.42s ease-in-out infinite;
+}
+@keyframes petPlayBounce {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    40%      { transform: translateY(-17%) rotate(-4deg); }
+    70%      { transform: translateY(-3%) rotate(3deg); }
+}
+
+/* 喜ぶ：くるっと跳ねる（記録したとき） */
+.pet-item.is-happy img {
+    animation: petHappyHop 0.6s ease-in-out 5;
+}
+@keyframes petHappyHop {
+    0%, 100% { transform: translateY(0) scale(1) rotate(0deg); }
+    35%      { transform: translateY(-28%) scale(1.06) rotate(-6deg); }
+    70%      { transform: translateY(-6%) scale(1.02) rotate(5deg); }
+}
+
+/* しょんぼり：縮こまる（予算オーバーでも親密度は下げない） */
+.pet-item.is-sad img {
+    animation: petSadSink 3s ease-in-out infinite;
+    filter: saturate(0.6) brightness(0.96);
+}
+@keyframes petSadSink {
+    0%, 100% { transform: translateY(2%) scale(0.96, 0.94) rotate(-1.5deg); }
+    50%      { transform: translateY(3%) scale(0.95, 0.95) rotate(-2.5deg); }
+}
+
+/* なでられた：やわらかく弾む */
+.pet-item.is-petted img {
+    animation: petPettedSquish 0.45s ease-in-out 4;
+}
+@keyframes petPettedSquish {
+    0%, 100% { transform: scale(1, 1); }
+    40%      { transform: scale(1.08, 0.92); }
+    70%      { transform: scale(0.97, 1.04); }
+}
+
+/* ============================================================
+   ▼ 画面の縮小表示
+   ============================================================ */
+.pet-float-grip {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin: 2px 0 4px 0;
+    padding: 5px 0;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-family: var(--font-display);
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+.pet-float-grip:hover { color: var(--accent); }
+.pet-float-grip span.material-icons-round {
+    font-size: 16px;
+    animation: gripBob 2.2s ease-in-out infinite;
+}
+@keyframes gripBob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(3px); }
+}
+
+/* ============================================================
+   ▼ マイルームの縮小表示（下に引くと小さくなる）
+   ------------------------------------------------------------
+   縮小するのは「マイルーム」のブロックだけ。
+   家計簿の部分（予算・内訳・グラフ・記録）には手を付けない。
+   縮んだぶんだけ、下の内容が上に詰まる。
+   ============================================================ */
+.pet-room-preview.is-compact {
+    /* 幅・高さは JS が実寸から計算して入れる（等比例） */
+    aspect-ratio: auto;
+    max-height: none;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: 0 6px 16px rgba(25, 27, 29, 0.18);
+}
+
+/* 縮小時は、部屋を中央に置いて全体が見えるようにする */
+/* flex の中央寄せだと、はみ出た部屋が左右に均等にずれて、
+   スクロール位置が残っているとき片側が切れる。
+   左上を基準に絶対配置して、縮小後の見た目が必ず枠にぴったり収まるようにする。 */
+.pet-room-preview.is-compact .room-scroll-wrapper {
+    overflow: hidden;
+    position: relative;
+}
+
+.pet-room-preview.is-compact .room-scene {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto 0;
+    transform-origin: 0 50%;
+}
+
+/* 小さすぎて読めないので、縮小時はセリフ枠を出さない */
+.pet-room-preview.is-compact .room-dialogue-box {
+    display: none;
+}
+
+/* 状態が変わるときだけアニメーションさせる。
+   指で引いている最中はこのクラスを外して、追従を優先する。 */
+.pet-room-preview.is-room-animating,
+.pet-room-preview.is-room-animating .room-scene {
+    transition: width 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+                height 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 縮小中はラベルの色を変えて「戻せる」と分かるようにする */
+.room-section.is-compact .pet-float-grip {
+    color: var(--accent);
+}
+
+
+/* ============================================================
+   ▼ 親密度（なつき度）
+   ============================================================ */
+.affinity-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 2px 0;
+    padding: 7px 12px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.affinity-heart {
+    font-size: 16px;
+    color: var(--danger);
+    flex-shrink: 0;
+    transition: opacity 0.2s ease;
+}
+.affinity-box[data-level="0"] .affinity-heart { opacity: 0.3; }
+.affinity-box[data-level="3"] .affinity-heart,
+.affinity-box[data-level="4"] .affinity-heart,
+.affinity-box[data-level="5"] .affinity-heart {
+    animation: heartBeat 1.8s ease-in-out infinite;
+}
+@keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    18%      { transform: scale(1.24); }
+    36%      { transform: scale(1); }
+}
+
+.affinity-label {
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.affinity-track {
+    flex: 1;
+    min-width: 36px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--line);
+    overflow: hidden;
+}
+.affinity-fill {
+    display: block;
+    height: 100%;
+    width: 0%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #e8a8a8, var(--danger));
+    transition: width 0.45s ease;
+}
+
+.affinity-score {
+    font-size: 0.72rem;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+    min-width: 2em;
+    text-align: right;
+}
+
+
+/* ============================================================
+   ▼ データ移行（コードのコピー／貼り付け）
+   ============================================================ */
+.transfer-textarea {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    line-height: 1.5;
+    word-break: break-all;
+    resize: vertical;
+    outline: none;
+    margin-bottom: 6px;
+}
+.transfer-textarea:focus { border-color: var(--accent); }
+.transfer-import-row { margin-top: 12px; align-items: center; }
+
+/* 横スクロールはブラウザに任せ、縦の「引いて縮小」はこちらで受け取る */
+.room-scroll-wrapper { touch-action: pan-x; }
+
+
+/* ============================================================
+   ▼ 追加：初回ガイド / 取り消しバー / バックアップ案内 / 設定
+   ============================================================ */
+
+/* --- 初回ガイド（画面をふさがない小さなカード） --- */
+.onboarding-card {
+    position: fixed;
+    left: 50%;
+    bottom: calc(86px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 440px;
+    padding: 14px 16px 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: 16px;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
+    z-index: 60;
+    animation: onbIn 0.25s ease-out;
+}
+@keyframes onbIn {
+    from { opacity: 0; transform: translate(-50%, 12px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+}
+.onb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.onb-dots { display: inline-flex; gap: 5px; }
+.onb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); }
+.onb-dot.is-active { background: var(--accent); }
+.onb-skip {
+    background: none; border: none; color: var(--muted);
+    font-size: 0.75rem; font-family: var(--font-display); cursor: pointer; padding: 4px 2px;
+}
+.onb-title { font-size: 0.9rem; font-weight: 500; color: var(--ink); margin-bottom: 4px; }
+.onb-body { font-size: 0.75rem; line-height: 1.65; color: var(--ink-soft); }
+.onb-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.onb-actions:empty { display: none; }
+
+/* 案内している場所を目立たせる */
+.onb-highlight {
+    outline: 3px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: 12px;
+    animation: onbPulse 1.6s ease-in-out infinite;
+}
+@keyframes onbPulse {
+    0%, 100% { outline-color: rgba(46, 63, 86, 0.95); }
+    50%      { outline-color: rgba(46, 63, 86, 0.25); }
+}
+
+/* --- 削除の取り消しバー --- */
+.undo-bar {
+    position: fixed;
+    left: 50%;
+    bottom: calc(90px + env(safe-area-inset-bottom));
+    transform: translate(-50%, 10px);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 8px 8px 16px;
+    background: var(--ink);
+    color: #fff;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+    z-index: 210;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.undo-bar.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.undo-bar-btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    font-size: 0.75rem;
+    font-family: var(--font-display);
+    cursor: pointer;
+}
+
+/* --- バックアップのお知らせ --- */
+.backup-banner {
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 2px 0;
+    padding: 10px 12px;
+    background: rgba(176, 71, 60, 0.07);
+    border: 1px solid rgba(176, 71, 60, 0.25);
+    border-radius: 12px;
+    flex-wrap: wrap;
+}
+.backup-banner-icon { font-size: 20px; color: var(--danger); }
+.backup-banner-text { flex: 1 1 160px; font-size: 0.75rem; line-height: 1.5; color: var(--ink); }
+.backup-banner-btn {
+    padding: 8px 14px; border: none; border-radius: 9px;
+    background: var(--ink); color: #fff;
+    font-size: 0.75rem; font-family: var(--font-display); cursor: pointer;
+}
+.backup-banner-later {
+    background: none; border: none; color: var(--muted);
+    font-size: 0.75rem; font-family: var(--font-display); cursor: pointer; padding: 6px 4px;
+}
+
+/* --- 設定のスイッチ --- */
+.pref-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.8rem;
+    color: var(--ink);
+}
+.pref-switch {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    width: 44px;
+    height: 26px;
+    flex-shrink: 0;
+    border-radius: 13px;
+    background: var(--line-strong);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+.pref-switch::after {
+    content: "";
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform 0.15s ease;
+}
+.pref-switch:checked { background: var(--accent); }
+.pref-switch:checked::after { transform: translateX(18px); }
+.pref-row + .data-action-row { margin-top: 14px; }
+
+/* --- 動きを減らす設定の人には、アニメーションを止める --- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* --- 拡大を許可した代わりに、スマホで入力欄をタップしたとき
+       画面が勝手に拡大されないよう、入力文字を16px以上にする --- */
+@media (pointer: coarse) {
+    input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+    input[type="date"], input[type="datetime-local"], select, textarea {
+        font-size: 16px !important;
+    }
+}
+
+
+/* --- 画面ずれ・ダブルタップ拡大の対策 --- */
+/* 外枠は一切スクロールさせない（hidden だとプログラムからは動かせてしまう） */
+.app-container { overflow: clip; }
+
+/* ダブルタップでの拡大だけを止める（ピンチ拡大・スクロールはそのまま使える） */
+html, body, .app-container { touch-action: manipulation; }
+
+/* 入力中はガイドのカードを引っ込める */
+.onboarding-card { transition: opacity 0.15s ease, transform 0.15s ease; }
+.onboarding-card.is-away { opacity: 0; transform: translate(-50%, 16px); pointer-events: none; }
+
+/* ガイドのカードは上（ヘッダーの下）に出す。位置は onboarding.js が計算する */
+.onboarding-card {
+    bottom: auto;
+    top: 72px;
+    animation-name: onbInTop;
+}
+@keyframes onbInTop {
+    from { opacity: 0; transform: translate(-50%, -12px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+}
+.onboarding-card.is-away { transform: translate(-50%, -16px); }
+
+
+/* ============================================================
+   ▼ v2.17 ガチャ・コレクション
+   ============================================================ */
+.gacha-content { position: relative; }
+.gacha-tabs { display: flex; gap: 8px; margin: 12px 0 14px; }
+.gacha-tab {
+    flex: 1; padding: 10px 0; border: 1px solid var(--line-strong); border-radius: 10px;
+    background: none; color: var(--ink-soft); font-size: 0.78rem; font-family: var(--font-display); cursor: pointer;
+}
+.gacha-tab.is-active { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+.gacha-machine { display: flex; justify-content: center; margin: 4px 0 8px; }
+.gacha-lead { text-align: center; margin-bottom: 8px; }
+.gacha-remain { text-align: center; font-size: 0.78rem; color: var(--accent); margin-bottom: 10px; }
+.gacha-odds {
+    margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px;
+    background: rgba(0, 0, 0, 0.015);
+}
+.gacha-odds:empty { display: none; }
+.gacha-odds-row { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--ink-soft); padding: 3px 0; }
+.gacha-odds-row strong { color: var(--ink); font-family: var(--font-mono); }
+#gacha-status { text-align: center; }
+
+/* --- コレクション --- */
+.collection-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+.collection-grid-wide { grid-template-columns: repeat(2, 1fr); }
+.collection-card {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    gap: 6px; min-height: 104px; padding: 10px 6px 8px; border: 1px solid var(--line-strong); border-radius: 12px;
+    background: rgba(255, 255, 255, 0.6); cursor: pointer; font-family: var(--font-display);
+}
+.collection-card img { max-width: 100%; max-height: 64px; object-fit: contain; image-rendering: pixelated; }
+.collection-card.is-map img { width: 100%; max-height: none; aspect-ratio: 1272 / 709; object-fit: cover; border-radius: 8px; }
+.collection-label { font-size: 0.72rem; color: var(--ink); }
+.collection-card.is-active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(46, 63, 86, 0.18); }
+.collection-badge {
+    position: absolute; top: 6px; left: 6px; padding: 2px 7px; border-radius: 10px;
+    background: var(--accent); color: #fff; font-size: 0.6rem; line-height: 1.4;
+}
+.collection-stars { position: absolute; top: 6px; right: 7px; font-size: 0.62rem; color: #d9a23a; letter-spacing: 0.02em; }
+.collection-stars.r1 { color: var(--muted); }
+.collection-card.is-locked img { filter: brightness(0) opacity(0.28); }
+.collection-card.is-locked .collection-label { color: var(--muted); }
+
+/* --- 演出 --- */
+.gacha-overlay {
+    position: absolute; inset: 0; z-index: 5; display: none; align-items: center; justify-content: center;
+    background: rgba(20, 21, 22, 0.78); padding: 20px; overflow: hidden;
+}
+.gacha-overlay.show { display: flex; }
+.gacha-stage { text-align: center; color: #fff; }
+.gacha-capsule-svg { width: 130px; height: 130px; animation: gachaShake 0.32s ease-in-out infinite; }
+.gacha-stage-text { margin-top: 14px; font-size: 0.85rem; letter-spacing: 0.1em; }
+@keyframes gachaShake {
+    0%, 100% { transform: rotate(0deg) translateY(0); }
+    25% { transform: rotate(-12deg) translateY(-6px); }
+    75% { transform: rotate(12deg) translateY(-6px); }
+}
+.gacha-stage.is-opening .gacha-capsule-svg { animation: gachaPop 0.4s ease-out forwards; }
+@keyframes gachaPop {
+    0% { transform: scale(1); filter: brightness(1); }
+    100% { transform: scale(1.7); filter: brightness(4); opacity: 0; }
+}
+
+.gacha-result {
+    position: relative; width: 100%; max-width: 340px; padding: 22px 18px 16px; text-align: center;
+    background: var(--surface); border-radius: 18px; border: 3px solid var(--line-strong);
+    animation: gachaCardIn 0.45s cubic-bezier(.2, 1.3, .4, 1);
+    max-height: 100%; overflow-y: auto;
+}
+@keyframes gachaCardIn { from { transform: scale(0.4) rotate(-6deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+.gacha-result.r2 { border-color: #7fb7e6; box-shadow: 0 0 24px rgba(127, 183, 230, 0.7); }
+.gacha-result.r3 { border-color: #f2c14e; box-shadow: 0 0 34px rgba(242, 193, 78, 0.95); animation: gachaCardIn 0.45s cubic-bezier(.2, 1.3, .4, 1), gachaGlow 1.6s ease-in-out infinite 0.5s; }
+@keyframes gachaGlow { 0%, 100% { box-shadow: 0 0 22px rgba(242, 193, 78, 0.7); } 50% { box-shadow: 0 0 46px rgba(242, 193, 78, 1); } }
+.gacha-new {
+    position: absolute; top: 12px; left: 12px; padding: 3px 10px; border-radius: 10px; transform: rotate(-6deg);
+    background: #e8647a; color: #fff; font-size: 0.7rem; letter-spacing: 0.06em; font-family: var(--font-pixel);
+}
+.gacha-result-stars { font-size: 1.1rem; color: #d9a23a; letter-spacing: 0.08em; }
+.gacha-result.r1 .gacha-result-stars { color: var(--muted); }
+.gacha-result-sub { font-size: 0.72rem; color: var(--ink-soft); margin-bottom: 10px; }
+.gacha-result-img { display: flex; align-items: center; justify-content: center; margin: 6px 0 8px; }
+.gacha-result-img.pet img { height: 110px; width: auto; image-rendering: pixelated; animation: gachaBounce 1.2s ease-in-out infinite; }
+.gacha-result-img.map img { width: 100%; aspect-ratio: 1272 / 709; object-fit: cover; border-radius: 10px; border: 1px solid var(--line-strong); }
+@keyframes gachaBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.gacha-result-name { font-size: 1.05rem; font-weight: 500; color: var(--ink); margin-bottom: 10px; }
+.gacha-name-label { display: block; font-size: 0.68rem; color: var(--muted); margin-bottom: 4px; }
+.gacha-name-input {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--line-strong); border-radius: 10px;
+    background: #fff; color: var(--ink); font-size: 0.9rem; text-align: center; outline: none; margin-bottom: 12px;
+}
+.gacha-name-input:focus { border-color: var(--accent); }
+.gacha-result-actions { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.gacha-result-actions .text-cancel-button { padding: 6px 4px; }
+
+.gacha-spark { position: absolute; color: #ffe27a; pointer-events: none; animation: gachaSpark 1.4s ease-in-out infinite; opacity: 0; }
+@keyframes gachaSpark { 0%, 100% { opacity: 0; transform: scale(0.4) rotate(0); } 50% { opacity: 1; transform: scale(1.2) rotate(40deg); } }
+
+
+/* --- ヘッダーのアイコンが6個に増えたので、狭い端末でも収まるようにする --- */
+.header-actions { min-width: 0; flex-shrink: 1; }
+@media (max-width: 400px) {
+    .app-header { padding-left: 16px; padding-right: 12px; }
+    .header-actions { gap: 0; }
+    .icon-button { width: 30px; height: 30px; }
+    .currency-pill { padding: 6px 10px; }
+}
+@media (max-width: 350px) {
+    .icon-button { width: 27px; height: 27px; }
+    .icon-button span { font-size: 18px; }
+}
+
+/* ============================================================
+   可読性パス
+   「下の字が小さい」という声を受けて、本文・補助情報を
+   0.8rem（18px 基準で 14.4px）以上に底上げする。
+   見出しやバッジなど、意図的に小さい装飾は対象外。
+   ============================================================ */
+.badge-time,
+.field-hint,
+.data-section-desc,
+.data-section-title,
+.data-import-status,
+.data-storage-info,
+.card-store,
+.card-item-row,
+.timeline-empty-hint,
+.receipt-hint,
+.receipt-warning,
+.receipt-ok,
+.pet-selection-hint,
+.petname-label,
+.petname-hero p,
+.daily-login-desc,
+.breakdown-label,
+.breakdown-value,
+.weekly-label,
+.compare-name,
+.compare-value,
+.affinity-label,
+.affinity-score,
+.shop-currency-unit,
+.form-group label,
+.items-summary,
+.item-unit {
+    font-size: 0.8rem;
+}
+
+/* ペットの名前は浮遊タグなので、少しだけ小さめに留める */
+.pet-name-tag {
+    font-size: 0.72rem;
+}
+
+/* 吹き出しは、部屋に貼った小さな付箋のように */
+.room-dialogue-box p {
+    font-size: 0.9rem;
+}
+
+/* ============================================================
+   カテゴリ別予算（v4）
+   ============================================================ */
+.budget-category-summary {
+    margin: 9px 0 0 0;
+    font-family: var(--font-hand);
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+}
+
+.budget-category-summary:empty {
+    display: none;
+}
+
+.budget-category-summary.is-over {
+    color: var(--danger);
+}
+
+.category-budget-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 4px 0 14px 0;
+}
+
+.category-budget-actions .secondary-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+}
+
+.category-budget-actions .material-icons-round {
+    font-size: 17px;
+}
+
+.category-budget-total {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+}
+
+.category-budget-total.is-over {
+    color: var(--danger);
+}
+
+.category-budget-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.category-budget-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px dashed var(--line);
+}
+
+.category-budget-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.category-budget-name {
+    font-size: 0.92rem;
+    color: var(--ink);
+}
+
+.category-budget-spent {
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.category-budget-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.category-budget-input {
+    width: 116px;
+    padding: 8px 9px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    text-align: right;
+    outline: none;
+}
+
+.category-budget-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(95, 109, 78, 0.12);
+}
+
+.category-budget-unit {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+/* 内訳でカテゴリ予算と比較しているとき */
+.breakdown-value {
+    width: 140px;
+}
+
+.breakdown-row.is-over .breakdown-fill {
+    background: var(--danger);
+}
+
+.breakdown-row.is-warn .breakdown-fill {
+    background: var(--warn);
+}
+
+.breakdown-row.is-over .breakdown-value {
+    color: var(--danger);
+}
+
+.breakdown-row.is-warn .breakdown-value {
+    color: var(--warn);
+}
+

@@ -1,0 +1,10 @@
+﻿{
+  "name": "yoyu-aru-app",
+  "private": true,
+  "version": "2.18.0",
+  "description": "余裕、ある？ — ペットと一緒に続ける家計簿アプリ",
+  "scripts": {
+    "test": "node tests/run.js"
+  }
+}
+
