@@ -17,10 +17,25 @@
     <link rel="apple-touch-icon" href="assets/icon-192.png">
 
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Klee+One:wght@400;600&display=swap">
+    <link rel="stylesheet" href="themes.css">
+    <script>
+    /* 描画の前にテーマを決める（ちらつき防止）。保存値: default / techo / pixel / night / auto */
+    (function () {
+        try {
+            var t = localStorage.getItem("yoyu_aru_theme") || "default";
+            if (t === "auto") t = (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) ? "night" : "default";
+            if (t !== "default") document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+    })();
+    </script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
 </head>
 <body>
+    <!-- 画面全体に広がる季節の背景（部屋の中ではなく、アプリ全体の背景） -->
+    <div class="season-backdrop" id="season-backdrop" aria-hidden="true">
+        <div class="season-backdrop-scene" id="season-backdrop-scene"></div>
+    </div>
     <div class="app-container">
         <header class="app-header">
             <div class="currency-pill" id="currency-pill" title="所持ポイント">
@@ -28,35 +43,15 @@
                 <span id="currency-amount">0</span>
             </div>
             <div class="header-actions">
+                <button class="icon-button" id="btn-open-language" type="button" title="言語" aria-label="言語">
+                    <span class="material-icons-round">translate</span>
+                </button>
                 <button class="icon-button planner-icon" id="btn-open-planner" type="button" title="貯金プランナー" aria-label="貯金プランナー">
                     <span class="material-icons-round">auto_awesome</span>
                 </button>
-                <button class="icon-button account-icon" id="btn-open-account" type="button" title="データ移行" aria-label="データ移行">
-                    <span class="material-icons-round">sync_alt</span>
+                <button class="icon-button" id="btn-open-more" type="button" title="メニュー" aria-label="メニュー">
+                    <span class="material-icons-round">more_horiz</span>
                 </button>
-                <div class="header-more">
-                    <button class="icon-button" id="btn-open-more" type="button" title="その他のメニュー" aria-label="その他のメニュー" aria-haspopup="true" aria-expanded="false">
-                        <span class="material-icons-round">more_horiz</span>
-                    </button>
-                    <div class="header-more-menu" id="header-more-menu" role="menu">
-                        <button class="more-item" id="btn-open-gacha" type="button" role="menuitem">
-                            <span class="material-icons-round">casino</span>
-                            <span>ガチャ</span>
-                        </button>
-                        <button class="more-item" id="btn-open-shop" type="button" role="menuitem">
-                            <span class="material-icons-round">storefront</span>
-                            <span>ショップ</span>
-                        </button>
-                        <button class="more-item" id="btn-open-data" type="button" role="menuitem">
-                            <span class="material-icons-round">storage</span>
-                            <span>データ管理</span>
-                        </button>
-                        <button class="more-item" id="btn-open-category" type="button" role="menuitem">
-                            <span class="material-icons-round">settings</span>
-                            <span>カテゴリ設定</span>
-                        </button>
-                    </div>
-                </div>
             </div>
         </header>
 
@@ -64,7 +59,6 @@
         <div class="room-section">
             <div class="section-title-bar room-section-title">
                 <h2>マイルーム</h2>
-                <span class="room-level" id="room-level">Lv.1</span>
                 <button class="room-edit-btn" id="btn-open-room-editor" title="部屋を編集">
                     <span class="material-icons-round">edit</span>編集
                 </button>
@@ -96,6 +90,7 @@
                 <span class="affinity-track"><span class="affinity-fill" id="affinity-fill"></span></span>
                 <span class="affinity-score" id="affinity-score">0</span>
             </div>
+            <p class="affinity-note"><span id="login-streak-label"></span><span>（毎回の登録で1ポイントたまります）</span></p>
 
             <div class="pet-chat-bar">
                 <input type="text" class="pet-chat-input" id="pet-chat-input" placeholder="ペットに話しかける" maxlength="40" autocomplete="off">
@@ -242,6 +237,102 @@
             </button>
         </main>
 
+        <!-- メニュー（フルスクリーン） -->
+        <div class="modal-overlay shop-overlay" id="modal-menu">
+            <div class="modal-content shop-content menu-content">
+                <div class="modal-header">
+                    <h3>メニュー</h3>
+                    <button class="close-button" id="btn-close-menu" type="button">閉じる</button>
+                </div>
+                <div class="modal-body">
+                    <nav class="menu-list">
+                        <button class="more-item" id="btn-open-theme" type="button">
+                            <span class="material-icons-round">palette</span><span>テーマ（見た目）</span><span class="material-icons-round more-item-chevron">chevron_right</span>
+                        </button>
+                        <button class="more-item" id="btn-open-language-menu" type="button">
+                            <span class="material-icons-round">translate</span><span>言語</span><span class="material-icons-round more-item-chevron">chevron_right</span>
+                        </button>
+                        <button class="more-item" id="btn-open-season" type="button">
+                            <span class="material-icons-round">wb_sunny</span><span>季節の背景</span><span class="material-icons-round more-item-chevron">chevron_right</span>
+                        </button>
+                        <button class="more-item" id="btn-open-gacha" type="button">
+                            <span class="material-icons-round">casino</span><span>ガチャ</span><span class="material-icons-round more-item-chevron">chevron_right</span>
+                        </button>
+                        <button class="more-item" id="btn-open-shop" type="button">
+                            <span class="material-icons-round">storefront</span><span>ショップ</span><span class="material-icons-round more-item-chevron">chevron_right</span>
+                        </button>
+                        <button class="more-item" id="btn-open-data" type="button">
+                            <span class="material-icons-round">storage</span><span>データ管理</span><span class="material-icons-round more-item-chevron">chevron_right</span>
+                        </button>
+                        <button class="more-item" id="btn-open-category" type="button">
+                            <span class="material-icons-round">settings</span><span>カテゴリ設定</span><span class="material-icons-round more-item-chevron">chevron_right</span>
+                        </button>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+        <!-- テーマ切り替え：選んだ瞬間に反映される -->
+        <div class="modal-overlay shop-overlay" id="modal-theme">
+            <div class="modal-content shop-content menu-content">
+                <div class="modal-header">
+                    <h3>テーマ（見た目）</h3>
+                    <button class="close-button" id="btn-close-theme" type="button">閉じる</button>
+                </div>
+                <div class="modal-body">
+                    <div class="theme-list" id="theme-list"></div>
+                    <p class="theme-note">選ぶとすぐに切り替わります。いつでも変えられて、記録したデータには影響しません。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 表示言語の切り替え -->
+        <div class="modal-overlay shop-overlay" id="modal-language">
+            <div class="modal-content shop-content menu-content">
+                <div class="modal-header">
+                    <h3>言語</h3>
+                    <button class="close-button" id="btn-close-language" type="button">閉じる</button>
+                </div>
+                <div class="modal-body">
+                    <h4 class="data-section-title">表示言語</h4>
+                    <div class="theme-list" id="language-list"></div>
+                    <p class="theme-note">言語を変えると、画面の文字がすぐに切り替わります。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 季節の背景 -->
+        <div class="modal-overlay shop-overlay" id="modal-season">
+            <div class="modal-content shop-content menu-content">
+                <div class="modal-header">
+                    <h3>季節の背景</h3>
+                    <button class="close-button" id="btn-close-season" type="button">閉じる</button>
+                </div>
+                <div class="modal-body">
+                    <div class="season-preview" id="season-preview">
+                        <div class="season-preview-caption">
+                            <span class="season-current-label" id="season-current-label"></span>
+                            <small id="season-current-sub"></small>
+                        </div>
+                    </div>
+                    <label class="pref-row">
+                        <span>自動で切り替える</span>
+                        <input type="checkbox" id="season-auto" class="pref-switch">
+                    </label>
+                    <div class="form-group">
+                        <label for="season-region">地域</label>
+                        <div class="select-wrapper">
+                            <select id="season-region" class="styled-select-full"></select>
+                        </div>
+                    </div>
+                    <p class="field-hint">この地域の季節と行事に合わせて、背景を自動で選びます。</p>
+                    <p class="field-hint">季節の背景は画面全体に表示されます。選んだ部屋はそのまま残ります。</p>
+                    <p class="field-hint" id="season-disabled-note" hidden>自動で切り替えるをオフにすると、季節の背景は表示されません。</p>
+                    <p class="theme-note">変更はすぐに反映されます。</p>
+                </div>
+            </div>
+        </div>
+
         <!-- 支出記録・編集モーダル -->
         <div class="modal-overlay" id="modal-expense">
             <div class="modal-content">
@@ -267,8 +358,9 @@
                     </div>
 
                     <div class="form-group">
-                        <label>金額 (円)</label>
+                        <label id="expense-amount-label">金額 (円)</label>
                         <input type="number" id="expense-amount" placeholder="0" min="0">
+                        <p class="currency-display-note" id="currency-display-note"></p>
                     </div>
                     <div class="form-group">
                         <label>カテゴリ</label>
@@ -306,60 +398,6 @@
                 </div>
                 <div class="modal-footer">
                     <button class="primary-button" id="btn-save-expense" disabled>記録する</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- データ移行モーダル（コードをコピー／貼り付け） -->
-        <div class="modal-overlay" id="modal-transfer">
-            <div class="modal-content account-content">
-                <div class="modal-header">
-                    <h3>データ移行</h3>
-                    <button class="close-button" id="btn-close-transfer">閉じる</button>
-                </div>
-                <div class="modal-body">
-                    <div class="account-section">
-                        <h4 class="data-section-title">① 古い端末：コードをコピー</h4>
-                        <p class="data-section-desc">いまのデータ（支出・予算・カテゴリ・マイルーム）を1つのコードにまとめました。コピーして、メモ・LINE・メールなどで新しい端末に送ってください。</p>
-                        <textarea class="transfer-textarea" id="transfer-code-out" rows="4" readonly spellcheck="false"></textarea>
-                        <p class="field-hint" id="transfer-code-size"></p>
-                        <button class="primary-button" id="btn-copy-transfer-code">コードをコピー</button>
-                        <div class="data-action-row transfer-import-row">
-                            <button class="secondary-button" id="btn-save-transfer-file">
-                                <span class="material-icons-round">file_download</span>
-                                ファイルに保存
-                            </button>
-                            <button class="secondary-button" id="btn-share-transfer-code" style="display:none;">
-                                <span class="material-icons-round">ios_share</span>
-                                共有
-                            </button>
-                        </div>
-                        <p class="field-hint">コードが長くてチャットに貼れないときは、ファイルに保存して送ってください。</p>
-                    </div>
-
-                    <div class="account-section">
-                        <h4 class="data-section-title">② 新しい端末：コードを貼り付け</h4>
-                        <textarea class="transfer-textarea" id="transfer-code-in" rows="4" placeholder="ここにコードを貼り付け（YOYU1 で始まる文字列）" spellcheck="false" autocomplete="off"></textarea>
-                        <div class="data-action-row">
-                            <button class="secondary-button" id="btn-paste-transfer-code">
-                                <span class="material-icons-round">content_paste</span>
-                                クリップボードから貼り付け
-                            </button>
-                            <label class="secondary-button" for="input-transfer-file">
-                                <span class="material-icons-round">file_upload</span>
-                                ファイルから読み込む
-                            </label>
-                            <input type="file" id="input-transfer-file" accept=".txt,text/plain" hidden>
-                        </div>
-                        <div class="data-action-row transfer-import-row">
-                            <button class="primary-button-sm" id="btn-import-transfer-replace">すべて置き換える</button>
-                            <button class="secondary-button" id="btn-import-transfer-merge">いまのデータと統合</button>
-                        </div>
-                        <p class="field-hint">新しい端末は「すべて置き換える」がおすすめです。すでに両方の端末に記録がある場合は「統合」を選ぶと、記録を足し合わせます（マイルームは新しい方が残ります）。</p>
-                        <p class="data-import-status" id="transfer-status"></p>
-                    </div>
-
-                    <p class="field-hint">※ レシートの写真と、OCR の API キーはコードに含まれません。コードには家計データがそのまま入っているので、他の人には見せないでください。</p>
                 </div>
             </div>
         </div>
@@ -495,10 +533,10 @@
                     </div>
 
                     <div class="data-section">
-                        <h4 class="data-section-title">バックアップ</h4>
-                        <p class="data-section-desc">記録した支出をCSVファイルとして書き出したり、CSVファイルから読み込んだりできます。</p>
+                        <h4 class="data-section-title">バックアップ（CSV）</h4>
+                        <p class="data-section-desc">支出・予算・カテゴリ・貯金プラン・マイルーム（ポイント、ペット、家具、ガチャ）まで、すべてを1つのCSVにまとめて書き出します。読み込みでは、このCSVのほか、銀行・カード明細のCSVも自動で判別します。（レシートの写真とAPIキーは含まれません）</p>
                         <div class="data-action-row">
-                            <button class="secondary-button" id="btn-export-csv">
+                            <button class="secondary-button" id="btn-export-csv" type="button">
                                 <span class="material-icons-round">file_download</span>
                                 CSVを書き出す
                             </button>
@@ -507,45 +545,13 @@
                                 CSVを読み込む
                             </label>
                             <input type="file" id="input-import-csv" accept=".csv,text/csv" hidden>
-                            <button class="secondary-button" id="btn-export-unified-csv" type="button">
-                                <span class="material-icons-round">inventory_2</span>
-                                全部入りCSVを書き出す
-                            </button>
                         </div>
                         <p class="data-import-status" id="data-import-status"></p>
                     </div>
 
                     <div class="data-section">
-                        <h4 class="data-section-title">バックアップファイル（端末の引っ越し）</h4>
-                        <p class="data-section-desc">CSV と違い、品目・店舗・予算・部屋の情報まで欠けずに移せます。新しい端末で読み込むと、いまの記録と自動で統合されます（上書きされません）。</p>
-                        <div class="data-action-row">
-                            <button class="secondary-button" id="btn-export-backup">
-                                <span class="material-icons-round">save</span>
-                                バックアップを書き出す
-                            </button>
-                            <label class="secondary-button" for="input-import-backup">
-                                <span class="material-icons-round">restore</span>
-                                バックアップを読み込む
-                            </label>
-                            <input type="file" id="input-import-backup" accept=".json,application/json" hidden>
-                        </div>
-                        <p class="data-import-status" id="data-backup-status"></p>
-                    </div>
-
-                    <div class="data-section">
-                        <h4 class="data-section-title">データ移行（コードで引っ越し）</h4>
-                        <p class="data-section-desc">データを1つのコードにしてコピーし、新しい端末に貼り付けるだけで移せます。</p>
-                        <div class="data-action-row">
-                            <button class="secondary-button" id="btn-open-transfer">
-                                <span class="material-icons-round">sync_alt</span>
-                                データ移行を開く
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="data-section">
-                        <h4 class="data-section-title">レシート読み取り（OCR）の設定</h4>
-                        <p class="data-section-desc">自分の APIキー を入れると、レシートを撮影して自動入力できます。キーはこの端末にだけ保存されます。読み取り時のみ、画像が選択した事業者へ送信されます。</p>
+                        <h4 class="data-section-title">AI設定（レシート読み取り・ペットとの会話）</h4>
+                        <p class="data-section-desc">レシートの自動入力は、APIキーなしでも1日に5回まで使えます（サーバー経由。画像は読み取りのためだけにサーバーと Google へ送られ、保存されません）。ペットとのAI会話も、APIキーなしで1日10回まで使えます。自分の APIキー を入れると、回数の制限なしで使えます。キーはこの端末にだけ保存され、このアプリのコードやGitHubには含まれません。使うときだけ、レシート画像や話しかけた内容がサーバーと Google へ送信されます。</p>
 
                         <div class="form-group">
                             <label>サービス</label>
@@ -576,22 +582,6 @@
                         <p class="data-import-status" id="ocr-status"></p>
                     </div>
 
-                    <div class="data-section">
-                        <h4 class="data-section-title">マイルームのバックアップ</h4>
-                        <p class="data-section-desc">ポイント・所持アイテム・部屋のレイアウトをCSVで書き出し／読み込みできます。</p>
-                        <div class="data-action-row">
-                            <button class="secondary-button" id="btn-export-room-csv">
-                                <span class="material-icons-round">file_download</span>
-                                CSVを書き出す
-                            </button>
-                            <label class="secondary-button" for="input-import-room-csv">
-                                <span class="material-icons-round">file_upload</span>
-                                CSVを読み込む
-                            </label>
-                            <input type="file" id="input-import-room-csv" accept=".csv,text/csv" hidden>
-                        </div>
-                        <p class="data-import-status" id="data-import-room-status"></p>
-                    </div>
                     <div class="data-section">
                         <h4 class="data-section-title">リセット</h4>
                         <p class="data-section-desc">今月分の支出と予算だけを消すか、すべてのデータを消して初期状態に戻せます。元に戻せないのでご注意ください。</p>
@@ -653,7 +643,9 @@
                 <div class="daily-login-body">
                     <span class="material-icons-round daily-login-icon">redeem</span>
                     <h3>ログインボーナス！</h3>
+                    <p class="daily-login-streak" id="daily-login-streak"></p>
                     <p class="daily-login-desc">今日も余裕、ある？<br>ログインポイントを受け取ろう</p>
+                    <p class="daily-login-note">（毎回の登録で1ポイントたまります）</p>
                     <div class="daily-login-amount"><span class="material-icons-round">toll</span><span id="daily-login-amount-value">200</span></div>
                     <button class="primary-button" id="btn-claim-daily-login">受け取る</button>
                     <button class="daily-login-later" id="btn-later-daily-login">あとで</button>
@@ -753,9 +745,8 @@
 
     </div>
 
+    <script src="i18n.js"></script>
+    <script src="seasons.js"></script>
     <script src="app.js"></script>
-    <script src="cloud.js"></script>
-    <script src="onboarding.js"></script>
-    <script src="gacha.js"></script>
 </body>
 </html>

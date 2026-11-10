@@ -1,14 +1,18 @@
-﻿// sw.js — オフラインでも開けるようにするための Service Worker
+// sw.js — オフラインでも開けるようにするための Service Worker
 // ・アプリ本体（html / js / css / json）… ネット優先。つながらないときだけ保存済みを使う
 //   → 更新を配ったとき、利用者に必ず新しい版が届く（古い版に居座らない）
 // ・画像・フォント … 保存済み優先。無ければ取得して保存する
-const CACHE = "yoyu-aru-v2.18";
-const CORE = ["./", "./index.html", "./app.js", "./cloud.js", "./onboarding.js", "./gacha.js", "./style.css", "./manifest.json"];
+const CACHE = "yoyu-aru-v3.6.4";
+const CORE = ["./", "./index.html", "./app.js", "./i18n.js", "./seasons.js", "./style.css", "./themes.css", "./manifest.json"];
+// 季節の背景（透明 SVG）はインストール時に先読みしない。
+// 実際に表示されたものだけ、下の cache-first 処理で保存する。
+// 動作アニメ（ペット5種×5動作）。先に保存しておくと、オフラインでも動く。
+const ACTION_FILES = ["./assets/act_shiba_yawn.webp", "./assets/act_shiba_groom.webp", "./assets/act_shiba_eat.webp", "./assets/act_shiba_stretch.webp", "./assets/act_shiba_ballplay.webp", "./assets/act_hamster_yawn.webp", "./assets/act_hamster_groom.webp", "./assets/act_hamster_eat.webp", "./assets/act_hamster_stretch.webp", "./assets/act_hamster_ballplay.webp", "./assets/act_panda_yawn.webp", "./assets/act_panda_groom.webp", "./assets/act_panda_eat.webp", "./assets/act_panda_stretch.webp", "./assets/act_panda_ballplay.webp", "./assets/act_neko_yawn.webp", "./assets/act_neko_groom.webp", "./assets/act_neko_eat.webp", "./assets/act_neko_stretch.webp", "./assets/act_neko_ballplay.webp", "./assets/act_usagi_yawn.webp", "./assets/act_usagi_groom.webp", "./assets/act_usagi_eat.webp", "./assets/act_usagi_stretch.webp", "./assets/act_usagi_ballplay.webp"];
 
 self.addEventListener("install", (event) => {
     event.waitUntil(
         caches.open(CACHE)
-            .then(cache => Promise.all(CORE.map(url => cache.add(url).catch(() => {}))))
+            .then(cache => Promise.all(CORE.concat(ACTION_FILES).map(url => cache.add(url).catch(() => {}))))
             .then(() => self.skipWaiting())
     );
 });

@@ -19,10 +19,11 @@
     /* --- フォント ---
        本文は丸ゴシック、見出しと「余裕」の数字だけ手書き風にして、
        生活帳のような温度を出す。 */
-    --font-display: 'M PLUS Rounded 1c', sans-serif;
-    --font-mono: 'M PLUS Rounded 1c', sans-serif;
-    --font-pixel: 'Silkscreen', 'M PLUS Rounded 1c', sans-serif;
-    --font-hand: 'Klee One', 'M PLUS Rounded 1c', sans-serif;
+    --font-main: 'M PLUS Rounded 1c', sans-serif;
+    --font-display: var(--font-main);
+    --font-mono: var(--font-main);
+    --font-pixel: var(--font-main);
+    --font-hand: var(--font-main);
 
     /* --- 文字サイズの基準 ---
        rem は html の font-size を基準にする。ここを上げると
@@ -53,9 +54,7 @@ html, body {
     overflow: hidden;
     background-color: var(--bg);
     /* 以前の main_background.jpg（ほぼ無地で 236KB）を CSS の光と紙の陰影に置き換え */
-    background-image:
-        radial-gradient(1200px 800px at 18% -10%, rgba(255, 252, 244, 0.95) 0%, rgba(255, 252, 244, 0) 62%),
-        radial-gradient(900px 700px at 108% 108%, rgba(95, 109, 78, 0.10) 0%, rgba(95, 109, 78, 0) 58%);
+    
     background-position: center;
     background-repeat: no-repeat;
     position: fixed;
@@ -97,53 +96,6 @@ html, body {
     gap: 2px;
 }
 
-.header-more {
-    position: relative;
-}
-
-.header-more-menu {
-    display: none;
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    min-width: 184px;
-    padding: 7px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    box-shadow: 0 16px 36px rgba(45, 42, 38, 0.14);
-    z-index: 60;
-}
-
-.header-more-menu.open {
-    display: block;
-}
-
-.more-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 10px 12px;
-    border: 0;
-    border-radius: 10px;
-    background: none;
-    color: var(--ink);
-    font-family: var(--font-display);
-    font-size: 0.9rem;
-    text-align: left;
-    cursor: pointer;
-}
-
-.more-item:hover {
-    background: rgba(95, 109, 78, 0.09);
-}
-
-.more-item .material-icons-round {
-    font-size: 20px;
-    color: var(--accent);
-}
-
 .icon-button {
     background: none;
     border: none;
@@ -154,7 +106,7 @@ html, body {
     justify-content: center;
     width: 34px;
     height: 34px;
-    border-radius: 10px;
+    border-radius: 0;
     transition: background-color 0.15s ease, color 0.15s ease;
 }
 
@@ -174,7 +126,7 @@ html, body {
     gap: 5px;
     padding: 7px 12px;
     background: rgba(95, 109, 78, 0.10);
-    border-radius: 20px;
+    border-radius: 0;
     color: var(--accent);
     font-size: 0.8rem;
     white-space: nowrap;
@@ -246,7 +198,7 @@ html, body {
     border: 1px solid var(--line-strong);
     background: var(--surface);
     color: var(--ink-soft);
-    border-radius: 20px;
+    border-radius: 0;
     font-size: 0.62rem;
     letter-spacing: 0.03em;
     cursor: pointer;
@@ -491,35 +443,16 @@ html, body {
 .pet-selection-hint { text-align: center; color: var(--muted); font-size: 0.65rem; margin-top: 14px; }
 .petname-content { max-width: 430px; }
 .petname-hero { text-align: center; padding: 24px 24px 8px; }
-.petname-icon-wrap { width: 88px; height: 88px; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; background: rgba(95,109,78,0.07); border-radius: 24px; }
+.petname-icon-wrap { width: 88px; height: 88px; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; background: rgba(95,109,78,0.07); border-radius: 0; }
 .petname-icon-wrap img { width: 70px; height: 70px; object-fit: contain; }
 .petname-kicker { display: block; color: var(--muted); font-size: 0.52rem; letter-spacing: 0.16em; margin-bottom: 6px; }
 .petname-hero h3 { font-size: 1rem; color: var(--ink); margin-bottom: 7px; }
 .petname-hero p { color: var(--ink-soft); font-size: 0.65rem; line-height: 1.6; }
 .petname-label { display: block; font-size: 0.64rem; color: var(--ink-soft); margin-bottom: 6px; }
-.pet-name-input { width: 100%; border: 1px solid var(--line-strong); border-radius: 12px; padding: 12px 13px; background: #fff; color: var(--ink); outline: none; font-size: 0.9rem; }
+.pet-name-input { width: 100%; border: 1px solid var(--line-strong); border-radius: 0; padding: 12px 13px; background: #fff; color: var(--ink); outline: none; font-size: 0.9rem; }
 .pet-name-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(95,109,78,0.10); }
 .petname-confirm { width: 100%; margin-top: 12px; }
 
-/* ==========================================
-   家具の環境アニメーション
-   ※ clock / danro / fishbowl は GIF が動くので CSS 側の演出は外した
-========================================== */
-.furniture-item[data-item-id="fishtank"]::after {
-    content: "";
-    position: absolute;
-    inset: 6% 4%;
-    background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,0.4) 45%, transparent 70%);
-    background-size: 250% 250%;
-    animation: waterShimmer 3.6s linear infinite;
-    mix-blend-mode: overlay;
-    pointer-events: none;
-    border-radius: 8px;
-}
-@keyframes waterShimmer {
-    0% { background-position: 120% -20%; }
-    100% { background-position: -20% 120%; }
-}
 
 .furniture-item[data-item-id="hang_plant"] img {
     transform-origin: 50% 4%;
@@ -619,7 +552,7 @@ html, body {
     margin: 8px 0 14px 0;
     background: rgba(255, 253, 248, 0.82);
     border: 1px solid var(--line);
-    border-radius: 18px;
+    border-radius: 0;
     box-shadow: 0 8px 26px rgba(45, 42, 38, 0.055);
 }
 
@@ -657,7 +590,7 @@ html, body {
     border: none;
     width: 26px;
     height: 26px;
-    border-radius: 7px;
+    border-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -705,23 +638,16 @@ html, body {
 .budget-progress-track {
     height: 6px;
     background: var(--line);
-    border-radius: 999px;
+    border-radius: 0;
     overflow: hidden;
 }
 
 .budget-progress-fill {
     height: 100%;
     width: 0%;
-    border-radius: 999px;
+    border-radius: 0;
     background: var(--accent);
     transition: width 0.35s ease, background-color 0.3s ease;
-}
-
-.budget-box.state-warn .budget-progress-fill {
-    background: var(--warn);
-}
-.budget-box.state-warn .budget-remaining-text {
-    color: var(--warn);
 }
 
 .budget-box.state-over .budget-progress-fill {
@@ -829,7 +755,7 @@ html, body {
     color: var(--accent);
     background: rgba(95, 109, 78, 0.09);
     border: 1px solid rgba(95, 109, 78, 0.16);
-    border-radius: 999px;
+    border-radius: 0;
     padding: 2px 8px;
     letter-spacing: 0.05em;
     font-weight: 500;
@@ -902,7 +828,7 @@ html, body {
     right: 24px;
     width: 48px;
     height: 48px;
-    border-radius: 14px;
+    border-radius: 0;
     background-color: var(--ink);
     border: none;
     box-shadow: 0 6px 18px rgba(25, 27, 29, 0.28);
@@ -933,7 +859,7 @@ html, body {
     content: "";
     position: absolute;
     inset: -5px;
-    border-radius: 18px;
+    border-radius: 0;
     border: 2px solid var(--danger);
     opacity: 0.6;
     animation: fabNeedsBudgetPulse 1.8s ease-out infinite;
@@ -968,7 +894,7 @@ html, body {
     background: var(--ink);
     color: #fff;
     padding: 10px 18px;
-    border-radius: 10px;
+    border-radius: 0;
     font-size: 0.72rem;
     letter-spacing: 0.02em;
     box-shadow: 0 8px 22px rgba(0,0,0,0.28);
@@ -1008,8 +934,8 @@ html, body {
     background: var(--surface);
     width: 100%;
     max-width: 640px;
-    border-top-left-radius: 18px;
-    border-top-right-radius: 18px;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
     padding: 22px 22px 24px 22px;
     max-height: 82%;
     overflow-y: auto;
@@ -1130,7 +1056,7 @@ html, body {
     background-color: var(--ink);
     color: white;
     border: none;
-    border-radius: 10px;
+    border-radius: 0;
     font-size: 0.78rem;
     cursor: pointer;
     font-family: var(--font-display);
@@ -1152,7 +1078,7 @@ html, body {
     background-color: var(--ink);
     color: white;
     border: none;
-    border-radius: 9px;
+    border-radius: 0;
     font-size: 0.74rem;
     cursor: pointer;
     flex-shrink: 0;
@@ -1303,7 +1229,7 @@ html, body {
     padding: 9px 14px;
     background: none;
     border: 1px solid var(--line-strong);
-    border-radius: 9px;
+    border-radius: 0;
     color: var(--ink);
     font-size: 0.72rem;
     cursor: pointer;
@@ -1325,7 +1251,7 @@ html, body {
     padding: 9px 14px;
     background: none;
     border: 1px solid var(--line-strong);
-    border-radius: 9px;
+    border-radius: 0;
     color: var(--danger);
     font-size: 0.72rem;
     cursor: pointer;
@@ -1365,7 +1291,7 @@ html, body {
 }
 
 .petname-overlay .modal-content {
-    border-radius: 18px;
+    border-radius: 0;
 }
 
 .pet-choice-row {
@@ -1382,7 +1308,7 @@ html, body {
     gap: 10px;
     padding: 18px 10px;
     border: 1px solid var(--line-strong);
-    border-radius: 14px;
+    border-radius: 0;
     background: none;
     cursor: pointer;
     transition: border-color 0.15s ease, background-color 0.15s ease;
@@ -1411,7 +1337,7 @@ html, body {
 }
 
 .daily-login-content {
-    border-radius: 18px;
+    border-radius: 0;
     text-align: center;
 }
 
@@ -1497,7 +1423,7 @@ html, body {
     height: 168px;
     padding: 10px 6px 8px 6px;
     border: 1px solid var(--line);
-    border-radius: 12px;
+    border-radius: 0;
     background: rgba(255,255,255,0.5);
 }
 
@@ -1536,7 +1462,7 @@ html, body {
     flex-shrink: 0;
     padding: 6px 0;
     border: none;
-    border-radius: 8px;
+    border-radius: 0;
     background: var(--ink);
     color: #fff;
     font-size: 0.62rem;
@@ -1645,7 +1571,7 @@ html, body {
     width: 56px;
     height: 56px;
     background: rgba(255,255,255,0.08);
-    border-radius: 10px;
+    border-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1667,7 +1593,7 @@ html, body {
     font-size: 16px !important;
     color: var(--accent);
     background: #fff;
-    border-radius: 50%;
+    border-radius: 0;
     pointer-events: none;
 }
 
@@ -1710,13 +1636,13 @@ html, body {
     flex: 1;
     height: 8px;
     background: var(--line);
-    border-radius: 4px;
+    border-radius: 0;
     overflow: hidden;
 }
 .breakdown-fill {
     height: 100%;
     background: var(--accent);
-    border-radius: 4px;
+    border-radius: 0;
     transition: width 0.3s ease;
 }
 .breakdown-value {
@@ -1734,17 +1660,7 @@ html, body {
     padding: 8px 0;
 }
 
-/* マイルームレベル */
-.room-level {
-    font-family: var(--font-mono);
-    font-size: 0.6rem;
-    color: var(--accent-soft);
-    background: rgba(46, 63, 86, 0.08);
-    padding: 2px 7px;
-    border-radius: 10px;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
+
 
 /* ペットへの一言チャット入力 */
 .pet-chat-bar {
@@ -1757,7 +1673,7 @@ html, body {
     flex: 1;
     padding: 8px 12px;
     border: 1px solid var(--line-strong);
-    border-radius: 20px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--ink);
     font-size: 0.72rem;
@@ -1776,7 +1692,7 @@ html, body {
     align-items: center;
     justify-content: center;
     border: none;
-    border-radius: 50%;
+    border-radius: 0;
     background: var(--ink);
     color: #fff;
     cursor: pointer;
@@ -1807,7 +1723,6 @@ html, body {
 .category-badge,
 .badge-time,
 .timeline-date-divider,
-.room-level,
 .pet-name-tag,
 .petname-kicker,
 .petname-label,
@@ -1859,7 +1774,7 @@ html, body {
     font-size: 20px;
     padding: 8px;
     margin: -8px;
-    border-radius: 8px;
+    border-radius: 0;
 }
 .card-actions { gap: 6px; }
 .category-manage-actions { gap: 10px; }
@@ -1882,7 +1797,7 @@ html, body {
     align-items: center;
     justify-content: center;
     border: 1px solid var(--line-strong);
-    border-radius: 10px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--ink-soft);
     cursor: pointer;
@@ -1904,7 +1819,7 @@ html, body {
     margin-left: auto;
     padding: 6px 12px;
     border: 1px solid var(--line-strong);
-    border-radius: 20px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--accent);
     font-size: 0.75rem;
@@ -1943,7 +1858,7 @@ html, body {
     margin-top: 5px;
     padding: 5px 10px 5px 9px;
     border: 1px solid var(--line-strong);
-    border-radius: 20px;
+    border-radius: 0;
     background: none;
     color: var(--accent-soft);
     font-size: 0.72rem;
@@ -1989,7 +1904,7 @@ html, body {
    ------------------------------------------------------------ */
 .items-editor {
     border: 1px solid var(--line);
-    border-radius: 12px;
+    border-radius: 0;
     padding: 10px;
     background: rgba(0, 0, 0, 0.015);
 }
@@ -2007,7 +1922,7 @@ html, body {
     min-width: 0;
     padding: 9px 10px;
     border: 1px solid var(--line-strong);
-    border-radius: 9px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--ink);
     font-size: 0.85rem;
@@ -2022,7 +1937,7 @@ html, body {
     flex-shrink: 0;
     padding: 9px 10px;
     border: 1px solid var(--line-strong);
-    border-radius: 9px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--ink);
     font-size: 0.85rem;
@@ -2044,7 +1959,7 @@ html, body {
     align-items: center;
     justify-content: center;
     border: none;
-    border-radius: 50%;
+    border-radius: 0;
     background: none;
     color: var(--muted);
     cursor: pointer;
@@ -2084,7 +1999,7 @@ html, body {
     width: 100%;
     padding: 9px 10px;
     border: 1px solid var(--line-strong);
-    border-radius: 9px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--ink);
     font-size: 0.9rem;
@@ -2103,8 +2018,8 @@ html, body {
     margin-top: 16px;
     padding: 14px 16px;
     border: 1px solid var(--line-strong);
-    border-radius: 14px;
-    background: linear-gradient(180deg, rgba(95,109,78,0.08), rgba(95,109,78,0.02));
+    border-radius: 0;
+    background: var(--surface);
 }
 
 .plan-card-head {
@@ -2144,14 +2059,14 @@ html, body {
 
 .plan-progress-track {
     height: 8px;
-    border-radius: 4px;
+    border-radius: 0;
     background: var(--line);
     overflow: hidden;
 }
 .plan-progress-fill {
     height: 100%;
     background: var(--accent);
-    border-radius: 4px;
+    border-radius: 0;
     transition: width 0.3s ease;
 }
 
@@ -2199,7 +2114,7 @@ html, body {
 
 .chart-svg-wrap {
     border: 1px solid var(--line);
-    border-radius: 12px;
+    border-radius: 0;
     padding: 8px 6px 4px 6px;
     background: rgba(255, 255, 255, 0.5);
 }
@@ -2234,14 +2149,14 @@ html, body {
     flex: 1;
     height: 8px;
     background: var(--line);
-    border-radius: 4px;
+    border-radius: 0;
     overflow: hidden;
 }
 .weekly-fill {
     display: block;
     height: 100%;
     background: var(--accent);
-    border-radius: 4px;
+    border-radius: 0;
     transition: width 0.3s ease;
 }
 .weekly-value {
@@ -2279,7 +2194,7 @@ html, body {
     font-size: 0.72rem;
     font-family: var(--font-mono);
     padding: 2px 7px;
-    border-radius: 10px;
+    border-radius: 0;
     background: rgba(0, 0, 0, 0.05);
     color: var(--ink-soft);
 }
@@ -2306,7 +2221,7 @@ html, body {
     border: 1px solid var(--line-strong);
     background: var(--surface);
     color: var(--ink-soft);
-    border-radius: 20px;
+    border-radius: 0;
     font-size: 0.72rem;
     font-family: var(--font-display);
     cursor: pointer;
@@ -2331,7 +2246,7 @@ html, body {
     padding: 12px;
     margin-bottom: 6px;
     border: 1px solid var(--line);
-    border-radius: 12px;
+    border-radius: 0;
     background: rgba(255, 255, 255, 0.6);
 }
 .filter-panel.open { display: flex; }
@@ -2348,7 +2263,7 @@ html, body {
 .filter-input-sm {
     padding: 9px 10px;
     border: 1px solid var(--line-strong);
-    border-radius: 9px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--ink);
     font-size: 0.82rem;
@@ -2394,7 +2309,7 @@ html, body {
     margin-bottom: 18px;
     padding: 10px;
     border: 1px solid var(--line);
-    border-radius: 12px;
+    border-radius: 0;
     background: rgba(0, 0, 0, 0.02);
 }
 
@@ -2402,7 +2317,7 @@ html, body {
     width: 84px;
     height: 110px;
     object-fit: cover;
-    border-radius: 8px;
+    border-radius: 0;
     flex-shrink: 0;
     border: 1px solid var(--line-strong);
 }
@@ -2419,6 +2334,56 @@ html, body {
     font-size: 0.72rem;
     color: var(--accent);
     line-height: 1.6;
+}
+.receipt-warning-mismatch {
+    color: var(--warn);
+    font-weight: 600;
+}
+.receipt-mismatch-gate {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--warn);
+    background: rgba(255, 209, 102, 0.16);
+}
+.receipt-mismatch-gate[hidden] { display: none; }
+.receipt-mismatch-hint {
+    margin: 0 0 6px;
+    color: var(--warn);
+    font-size: 0.72rem;
+    line-height: 1.5;
+}
+.receipt-mismatch-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    color: var(--ink);
+    font-size: 0.72rem;
+    line-height: 1.45;
+    cursor: pointer;
+}
+.receipt-mismatch-label input {
+    margin: 2px 0 0;
+    flex: none;
+    accent-color: var(--warn);
+}
+.item-row.is-receipt-mismatch {
+    background: rgba(255, 209, 102, 0.18);
+    box-shadow: inset 0 0 0 2px var(--warn);
+}
+.item-row.is-receipt-mismatch .item-name,
+.item-row.is-receipt-mismatch .item-price {
+    border-color: var(--warn);
+    background: rgba(255, 246, 218, 0.9);
+}
+#expense-amount.is-receipt-mismatch {
+    border-color: var(--warn);
+    box-shadow: 0 0 0 2px rgba(143, 99, 43, 0.18);
+}
+.currency-display-note {
+    margin: 6px 0 0;
+    font-size: 0.68rem;
+    line-height: 1.5;
+    color: var(--muted);
 }
 
 /* ------------------------------------------------------------
@@ -2439,7 +2404,7 @@ html, body {
     gap: 4px;
     padding: 12px 6px;
     border: 1px solid var(--line-strong);
-    border-radius: 12px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--ink-soft);
     cursor: pointer;
@@ -2463,8 +2428,8 @@ html, body {
 .planner-result-card {
     padding: 16px;
     border: 1px solid var(--line-strong);
-    border-radius: 14px;
-    background: linear-gradient(180deg, rgba(95,109,78,0.09), rgba(95,109,78,0.02));
+    border-radius: 0;
+    background: var(--surface);
 }
 
 .planner-result-kicker {
@@ -2530,7 +2495,7 @@ html, body {
 .planner-suggestion {
     padding: 10px 12px;
     border: 1px solid var(--line);
-    border-radius: 10px;
+    border-radius: 0;
     margin-bottom: 8px;
 }
 .planner-suggestion-head {
@@ -2569,124 +2534,19 @@ html, body {
     top: 0.62em;
     width: 5px;
     height: 5px;
-    border-radius: 50%;
+    border-radius: 0;
     background: var(--accent-soft);
 }
 
 .planner-error {
     padding: 14px;
     border: 1px solid rgba(176, 71, 60, 0.35);
-    border-radius: 12px;
+    border-radius: 0;
     background: rgba(176, 71, 60, 0.06);
     color: var(--danger);
     font-size: 0.8rem;
     line-height: 1.6;
 }
-
-/* ------------------------------------------------------------
-   同期コード
-   ------------------------------------------------------------ */
-.sync-code-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.sync-code {
-    flex: 1;
-    min-width: 160px;
-    padding: 10px 14px;
-    border: 1px dashed var(--line-strong);
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.02);
-    font-family: var(--font-mono);
-    font-size: 0.95rem;
-    letter-spacing: 0.12em;
-    color: var(--accent);
-    text-align: center;
-}
-
-/* ------------------------------------------------------------
-   アカウント
-   ------------------------------------------------------------ */
-.account-icon { color: var(--accent); }
-
-.account-content { max-width: 520px; }
-
-.account-tabs {
-    display: flex;
-    gap: 6px;
-    padding: 4px;
-    margin-bottom: 18px;
-    background: rgba(0, 0, 0, 0.04);
-    border-radius: 11px;
-}
-
-.account-tab {
-    flex: 1;
-    padding: 9px 0;
-    border: none;
-    border-radius: 8px;
-    background: none;
-    color: var(--ink-soft);
-    font-size: 0.8rem;
-    font-family: var(--font-display);
-    cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease;
-}
-.account-tab.is-active {
-    background: var(--surface);
-    color: var(--accent);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.account-setup {
-    margin-top: 22px;
-    padding-top: 16px;
-    border-top: 1px solid var(--line);
-}
-.account-setup summary {
-    font-size: 0.78rem;
-    color: var(--accent);
-    cursor: pointer;
-    margin-bottom: 10px;
-}
-.account-setup code {
-    font-family: var(--font-mono);
-    font-size: 0.85em;
-    background: rgba(0, 0, 0, 0.05);
-    padding: 1px 5px;
-    border-radius: 4px;
-}
-
-.account-user-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px;
-    margin-bottom: 18px;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: rgba(46, 63, 86, 0.04);
-}
-.account-user-icon { font-size: 30px; color: var(--accent); }
-.account-user-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.account-user-label { font-size: 0.7rem; color: var(--muted); }
-.account-user-email {
-    font-size: 0.85rem;
-    color: var(--ink);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.account-section {
-    padding-top: 16px;
-    margin-top: 16px;
-    border-top: 1px solid var(--line);
-}
-.account-section:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
 
 /* ============================================================
    ▼ ペットの動作（状態機械の見た目）
@@ -2849,7 +2709,7 @@ html, body {
     margin: 6px 0 2px 0;
     padding: 7px 12px;
     border: 1px solid var(--line);
-    border-radius: 20px;
+    border-radius: 0;
     background: rgba(255, 255, 255, 0.6);
 }
 
@@ -2882,7 +2742,7 @@ html, body {
     flex: 1;
     min-width: 36px;
     height: 6px;
-    border-radius: 3px;
+    border-radius: 0;
     background: var(--line);
     overflow: hidden;
 }
@@ -2890,8 +2750,8 @@ html, body {
     display: block;
     height: 100%;
     width: 0%;
-    border-radius: 3px;
-    background: linear-gradient(90deg, #e8a8a8, var(--danger));
+    border-radius: 0;
+    background: var(--danger);
     transition: width 0.45s ease;
 }
 
@@ -2904,29 +2764,6 @@ html, body {
     min-width: 2em;
     text-align: right;
 }
-
-
-/* ============================================================
-   ▼ データ移行（コードのコピー／貼り付け）
-   ============================================================ */
-.transfer-textarea {
-    display: block;
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--line-strong);
-    border-radius: 10px;
-    background: var(--surface);
-    color: var(--ink);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    line-height: 1.5;
-    word-break: break-all;
-    resize: vertical;
-    outline: none;
-    margin-bottom: 6px;
-}
-.transfer-textarea:focus { border-color: var(--accent); }
-.transfer-import-row { margin-top: 12px; align-items: center; }
 
 /* 横スクロールはブラウザに任せ、縦の「引いて縮小」はこちらで受け取る */
 .room-scroll-wrapper { touch-action: pan-x; }
@@ -2947,7 +2784,7 @@ html, body {
     padding: 14px 16px 14px 16px;
     background: var(--surface);
     border: 1px solid var(--line-strong);
-    border-radius: 16px;
+    border-radius: 0;
     box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
     z-index: 60;
     animation: onbIn 0.25s ease-out;
@@ -2958,7 +2795,7 @@ html, body {
 }
 .onb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .onb-dots { display: inline-flex; gap: 5px; }
-.onb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); }
+.onb-dot { width: 7px; height: 7px; border-radius: 0; background: var(--line-strong); }
 .onb-dot.is-active { background: var(--accent); }
 .onb-skip {
     background: none; border: none; color: var(--muted);
@@ -2973,7 +2810,7 @@ html, body {
 .onb-highlight {
     outline: 3px solid var(--accent);
     outline-offset: 4px;
-    border-radius: 12px;
+    border-radius: 0;
     animation: onbPulse 1.6s ease-in-out infinite;
 }
 @keyframes onbPulse {
@@ -2993,7 +2830,7 @@ html, body {
     padding: 8px 8px 8px 16px;
     background: var(--ink);
     color: #fff;
-    border-radius: 12px;
+    border-radius: 0;
     font-size: 0.75rem;
     box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
     z-index: 210;
@@ -3005,7 +2842,7 @@ html, body {
 .undo-bar-btn {
     padding: 8px 14px;
     border: none;
-    border-radius: 9px;
+    border-radius: 0;
     background: rgba(255, 255, 255, 0.16);
     color: #fff;
     font-size: 0.75rem;
@@ -3021,13 +2858,13 @@ html, body {
     padding: 10px 12px;
     background: rgba(176, 71, 60, 0.07);
     border: 1px solid rgba(176, 71, 60, 0.25);
-    border-radius: 12px;
+    border-radius: 0;
     flex-wrap: wrap;
 }
 .backup-banner-icon { font-size: 20px; color: var(--danger); }
 .backup-banner-text { flex: 1 1 160px; font-size: 0.75rem; line-height: 1.5; color: var(--ink); }
 .backup-banner-btn {
-    padding: 8px 14px; border: none; border-radius: 9px;
+    padding: 8px 14px; border: none; border-radius: 0;
     background: var(--ink); color: #fff;
     font-size: 0.75rem; font-family: var(--font-display); cursor: pointer;
 }
@@ -3053,7 +2890,7 @@ html, body {
     width: 44px;
     height: 26px;
     flex-shrink: 0;
-    border-radius: 13px;
+    border-radius: 0;
     background: var(--line-strong);
     cursor: pointer;
     transition: background-color 0.15s ease;
@@ -3063,7 +2900,7 @@ html, body {
     position: absolute;
     top: 3px; left: 3px;
     width: 20px; height: 20px;
-    border-radius: 50%;
+    border-radius: 0;
     background: #fff;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
     transition: transform 0.15s ease;
@@ -3122,7 +2959,7 @@ html, body, .app-container { touch-action: manipulation; }
 .gacha-content { position: relative; }
 .gacha-tabs { display: flex; gap: 8px; margin: 12px 0 14px; }
 .gacha-tab {
-    flex: 1; padding: 10px 0; border: 1px solid var(--line-strong); border-radius: 10px;
+    flex: 1; padding: 10px 0; border: 1px solid var(--line-strong); border-radius: 0;
     background: none; color: var(--ink-soft); font-size: 0.78rem; font-family: var(--font-display); cursor: pointer;
 }
 .gacha-tab.is-active { background: var(--ink); border-color: var(--ink); color: #fff; }
@@ -3131,7 +2968,7 @@ html, body, .app-container { touch-action: manipulation; }
 .gacha-lead { text-align: center; margin-bottom: 8px; }
 .gacha-remain { text-align: center; font-size: 0.78rem; color: var(--accent); margin-bottom: 10px; }
 .gacha-odds {
-    margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px;
+    margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 0;
     background: rgba(0, 0, 0, 0.015);
 }
 .gacha-odds:empty { display: none; }
@@ -3144,15 +2981,15 @@ html, body, .app-container { touch-action: manipulation; }
 .collection-grid-wide { grid-template-columns: repeat(2, 1fr); }
 .collection-card {
     position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-    gap: 6px; min-height: 104px; padding: 10px 6px 8px; border: 1px solid var(--line-strong); border-radius: 12px;
+    gap: 6px; min-height: 104px; padding: 10px 6px 8px; border: 1px solid var(--line-strong); border-radius: 0;
     background: rgba(255, 255, 255, 0.6); cursor: pointer; font-family: var(--font-display);
 }
-.collection-card img { max-width: 100%; max-height: 64px; object-fit: contain; image-rendering: pixelated; }
-.collection-card.is-map img { width: 100%; max-height: none; aspect-ratio: 1272 / 709; object-fit: cover; border-radius: 8px; }
+.collection-card img { max-width: 100%; max-height: 64px; object-fit: contain; image-rendering: var(--pet-render); }
+.collection-card.is-map img { width: 100%; max-height: none; aspect-ratio: 1272 / 709; object-fit: cover; border-radius: 0; }
 .collection-label { font-size: 0.72rem; color: var(--ink); }
 .collection-card.is-active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(46, 63, 86, 0.18); }
 .collection-badge {
-    position: absolute; top: 6px; left: 6px; padding: 2px 7px; border-radius: 10px;
+    position: absolute; top: 6px; left: 6px; padding: 2px 7px; border-radius: 0;
     background: var(--accent); color: #fff; font-size: 0.6rem; line-height: 1.4;
 }
 .collection-stars { position: absolute; top: 6px; right: 7px; font-size: 0.62rem; color: #d9a23a; letter-spacing: 0.02em; }
@@ -3182,7 +3019,7 @@ html, body, .app-container { touch-action: manipulation; }
 
 .gacha-result {
     position: relative; width: 100%; max-width: 340px; padding: 22px 18px 16px; text-align: center;
-    background: var(--surface); border-radius: 18px; border: 3px solid var(--line-strong);
+    background: var(--surface); border-radius: 0; border: 3px solid var(--line-strong);
     animation: gachaCardIn 0.45s cubic-bezier(.2, 1.3, .4, 1);
     max-height: 100%; overflow-y: auto;
 }
@@ -3191,20 +3028,20 @@ html, body, .app-container { touch-action: manipulation; }
 .gacha-result.r3 { border-color: #f2c14e; box-shadow: 0 0 34px rgba(242, 193, 78, 0.95); animation: gachaCardIn 0.45s cubic-bezier(.2, 1.3, .4, 1), gachaGlow 1.6s ease-in-out infinite 0.5s; }
 @keyframes gachaGlow { 0%, 100% { box-shadow: 0 0 22px rgba(242, 193, 78, 0.7); } 50% { box-shadow: 0 0 46px rgba(242, 193, 78, 1); } }
 .gacha-new {
-    position: absolute; top: 12px; left: 12px; padding: 3px 10px; border-radius: 10px; transform: rotate(-6deg);
+    position: absolute; top: 12px; left: 12px; padding: 3px 10px; border-radius: 0; transform: rotate(-6deg);
     background: #e8647a; color: #fff; font-size: 0.7rem; letter-spacing: 0.06em; font-family: var(--font-pixel);
 }
 .gacha-result-stars { font-size: 1.1rem; color: #d9a23a; letter-spacing: 0.08em; }
 .gacha-result.r1 .gacha-result-stars { color: var(--muted); }
 .gacha-result-sub { font-size: 0.72rem; color: var(--ink-soft); margin-bottom: 10px; }
 .gacha-result-img { display: flex; align-items: center; justify-content: center; margin: 6px 0 8px; }
-.gacha-result-img.pet img { height: 110px; width: auto; image-rendering: pixelated; animation: gachaBounce 1.2s ease-in-out infinite; }
-.gacha-result-img.map img { width: 100%; aspect-ratio: 1272 / 709; object-fit: cover; border-radius: 10px; border: 1px solid var(--line-strong); }
+.gacha-result-img.pet img { height: 110px; width: auto; image-rendering: var(--pet-render); animation: gachaBounce 1.2s ease-in-out infinite; }
+.gacha-result-img.map img { width: 100%; aspect-ratio: 1272 / 709; object-fit: cover; border-radius: 0; border: 1px solid var(--line-strong); }
 @keyframes gachaBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 .gacha-result-name { font-size: 1.05rem; font-weight: 500; color: var(--ink); margin-bottom: 10px; }
 .gacha-name-label { display: block; font-size: 0.68rem; color: var(--muted); margin-bottom: 4px; }
 .gacha-name-input {
-    width: 100%; padding: 9px 12px; border: 1px solid var(--line-strong); border-radius: 10px;
+    width: 100%; padding: 9px 12px; border: 1px solid var(--line-strong); border-radius: 0;
     background: #fff; color: var(--ink); font-size: 0.9rem; text-align: center; outline: none; margin-bottom: 12px;
 }
 .gacha-name-input:focus { border-color: var(--accent); }
@@ -3366,7 +3203,7 @@ html, body, .app-container { touch-action: manipulation; }
     width: 116px;
     padding: 8px 9px;
     border: 1px solid var(--line-strong);
-    border-radius: 9px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--ink);
     font-family: var(--font-mono);
@@ -3394,15 +3231,87 @@ html, body, .app-container { touch-action: manipulation; }
     background: var(--danger);
 }
 
-.breakdown-row.is-warn .breakdown-fill {
-    background: var(--warn);
-}
-
 .breakdown-row.is-over .breakdown-value {
     color: var(--danger);
 }
 
-.breakdown-row.is-warn .breakdown-value {
-    color: var(--warn);
+
+
+/* ============================================================
+   ▼ v3.0 デザイン調整
+   ============================================================ */
+:root {
+    --muted: #5d564a;
+    --ink-soft: #4a453d;
+    /* ペット画像の描画方式を全画面で統一。ドット絵素材なら pixelated に変えるだけ */
+    --pet-render: auto;
 }
 
+/* 影をやめて、罫線で区切る（台帳の見た目） */
+.budget-box, .modal-content, .app-toast, .undo-bar, .onboarding-card, .fab { box-shadow: none; }
+
+/* ---- メニュー（フルスクリーン） ---- */
+.menu-list { display: flex; flex-direction: column; border-top: 1px solid var(--line-strong); }
+.more-item {
+    display: flex; align-items: center; gap: 14px; width: 100%;
+    padding: 20px 4px; border: 0; border-bottom: 1px solid var(--line-strong);
+    background: none; color: var(--ink); font-size: 1.05rem; text-align: left; cursor: pointer;
+}
+.more-item:active { background: rgba(95, 109, 78, 0.09); }
+.more-item .material-icons-round { font-size: 24px; color: var(--accent); }
+.more-item span:nth-child(2) { flex: 1; }
+.more-item .more-item-chevron { color: var(--muted); }
+
+/* ---- ペットの表情（顔文字）バッジ ---- */
+.mood-badge {
+    top: -6px; right: auto; left: 78%;
+    width: auto; height: auto; padding: 3px 8px;
+    border: 1px solid var(--line-strong); border-radius: 10px;
+    background: #fff; color: var(--danger);
+    font-size: 0.78rem; line-height: 1.3; white-space: nowrap;
+    box-shadow: none; pointer-events: none; z-index: 9997;
+    transform: translateX(-50%) scaleX(var(--flip, 1)) scale(calc(1 / var(--scale, 1)));
+    transform-origin: 50% 100%;
+}
+
+/* ---- ペットの見た目を統一（描画方式と足もとの影） ---- */
+.pet-item img,
+.pet-choice-card img,
+.petname-icon-wrap img,
+.collection-card:not(.is-map) img,
+.gacha-result-img.pet img { image-rendering: var(--pet-render); }
+.pet-item::before {
+    content: "";
+    position: absolute; left: 14%; right: 14%; bottom: -1%; height: 9%;
+    background: rgba(45, 42, 38, 0.18); border-radius: 50%; filter: blur(2px);
+    z-index: -1; pointer-events: none;
+}
+
+/* ---- 連続ログイン・親密度の説明 ---- */
+.affinity-note {
+    display: flex; flex-wrap: wrap; gap: 2px 10px;
+    margin: 2px 4px 0; font-size: 0.8rem; color: var(--ink-soft);
+}
+#login-streak-label { color: var(--accent); font-weight: 700; }
+#login-streak-label:empty { display: none; }
+.daily-login-streak { font-size: 1rem; font-weight: 700; color: var(--accent); }
+.daily-login-note { font-size: 0.8rem; color: var(--ink-soft); }
+
+/* ---- ガチャのコレクション：文字のコントラストを上げる ---- */
+.gacha-content .field-hint,
+.gacha-content .data-section-desc,
+.gacha-content .data-section-title,
+.gacha-content .gacha-odds-row,
+.gacha-content .gacha-remain { color: var(--ink); }
+.gacha-content .field-hint { font-size: 0.85rem; }
+.collection-card.is-locked .collection-label { color: var(--ink-soft); }
+.collection-stars.r1 { color: var(--ink-soft); }
+
+/* ==========================================
+   ▼ v3.1・v3.2 追加分：ペットの動作アニメ（あくび・のび・毛づくろい・ごはん・ボール遊び）
+   動作画像は自分で動くので、ゆらゆら／のびの CSS アニメは止める。
+   大きさと足元の補正は app.js（petApplyImage）がインラインで入れる。
+   ========================================== */
+.pet-item.is-acting img {
+    animation: none;
+}

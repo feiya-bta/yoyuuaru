@@ -1,4 +1,4 @@
-﻿// ================================================================
+// ================================================================
 // ▼ app.js
 // ================================================================
 
@@ -35,6 +35,104 @@ function formatMonthLabel(monthKey) {
     if (parts.length < 2) return "";
     return `${parts[0]}年${parseInt(parts[1], 10)}月`;
 }
+
+// ---- 表示通貨（保存値は円のまま。記号だけ切り替える）-------------------------
+const CURRENCY_META = {
+    JPY: { code: "JPY", symbol: "JP¥", locale: "ja-JP" },
+    CNY: { code: "CNY", symbol: "CN¥", locale: "zh-CN" },
+    USD: { code: "USD", symbol: "US$", locale: "en-US" }
+};
+
+function getDisplayCurrency() {
+    let region = "";
+    try {
+        if (window.SeasonalBackground && SeasonalBackground.config) region = SeasonalBackground.config.region;
+    } catch (e) { /* ignore */ }
+    // 地域が明確な国は地域優先。kr/eu/au は通貨がないため言語へフォールバック。
+    if (region === "cn") return "CNY";
+    if (region === "us") return "USD";
+    if (region === "jp") return "JPY";
+    const lang = window.I18N ? I18N.lang : "ja";
+    if (lang === "zh") return "CNY";
+    if (lang === "en") return "USD";
+    return "JPY";
+}
+
+function currencyMeta() {
+    return CURRENCY_META[getDisplayCurrency()] || CURRENCY_META.JPY;
+}
+
+function formatMoney(value) {
+    const meta = currencyMeta();
+    const n = Number(value) || 0;
+    const abs = Math.abs(n);
+    let grouped;
+    try {
+        grouped = abs.toLocaleString(meta.locale, { maximumFractionDigits: 0 });
+    } catch (e) {
+        grouped = abs.toLocaleString();
+    }
+    return (n < 0 ? "-" : "") + meta.symbol + grouped;
+}
+
+// i18n.js の translateRaw から呼ばれる。表示テキストだけを変換する。
+function formatMoneyText(text) {
+    if (text == null) return text;
+    let out = String(text);
+    out = out.replace(/([+-]?\d[\d,]*(?:\.\d+)?)\s*円/g, function (_, n) {
+        return formatMoney(parseFloat(String(n).replace(/,/g, "")));
+    });
+    // すでに i18n が付けた ¥ / 既存の通貨記号も選択通貨へ寄せる。
+    // lookbehind は古い Safari で構文エラーになるため使わない。
+    out = out.replace(/(JP¥|CN¥|US\$|¥)\s*([\d,]+(?:\.\d+)?)/g, function (_, sym, n) {
+        return formatMoney(parseFloat(String(n).replace(/,/g, "")));
+    });
+    // 単位だけの「円」も記号へ
+    out = out.replace(/円/g, currencyMeta().symbol);
+    return out;
+}
+
+window.YOYU_GET_CURRENCY = getDisplayCurrency;
+window.YOYU_FORMAT_MONEY_TEXT = formatMoneyText;
+
+function updateCurrencyChrome() {
+    const meta = currencyMeta();
+    document.documentElement.setAttribute("data-currency", meta.code);
+
+    document.querySelectorAll(".unit-label, .category-budget-unit, .item-unit")
+        .forEach(el => { el.textContent = meta.symbol; });
+    const summaryUnit = document.querySelector(".summary-unit");
+    if (summaryUnit) summaryUnit.textContent = "";
+
+    // 予算サマリーは数値だけを書き換えるため、通貨変更時に再描画する。
+    if (typeof renderBudgetSummary === "function") {
+        try { renderBudgetSummary(); } catch (e) { /* ignore */ }
+    }
+
+    const label = document.getElementById("expense-amount-label");
+    if (label) {
+        label.setAttribute("data-i18n-skip", "1");
+        label.textContent = (window.I18N ? I18N.t("金額") : "金額") + " (" + meta.code + ")";
+    }
+
+    const note = document.getElementById("currency-display-note");
+    if (note) {
+        note.setAttribute("data-i18n-skip", "1");
+        note.textContent = window.I18N
+            ? I18N.t("表示通貨は記号のみ変更します。両替・換算はしません。")
+            : "表示通貨は記号のみ変更します。両替・換算はしません。";
+    }
+}
+
+function refreshCurrencyDisplay() {
+    updateCurrencyChrome();
+    try {
+        if (window.I18N) I18N.apply(I18N.lang, { noSave: true });
+    } catch (e) { /* ignore */ }
+}
+
+window.addEventListener("yoyu:languagechange", updateCurrencyChrome);
+window.addEventListener("yoyu:seasonchange", refreshCurrencyDisplay);
 
 function addMonths(monthKey, delta) {
     const parts = String(monthKey || "").split("-").map(n => parseInt(n, 10));
@@ -245,7 +343,7 @@ function escapeHtml(value) {
 }
 
 // ------------------------------------------
-// 端末ごとの設定（データ移行のコードには含めない）
+// 端末ごとの設定（CSVには含めない）
 // ------------------------------------------
 const PREFS_KEY = "yoyu_aru_prefs";
 const DEFAULT_PREFS = { sound: true, haptics: true, lastBackupAt: null, backupRemindedAt: null };
@@ -363,13 +461,14 @@ function renderBackupBanner() {
     const text = document.getElementById("backup-banner-text");
     if (text) {
         text.textContent = Number.isFinite(d)
-            ? `最後のバックアップから ${Math.floor(d)} 日たちました。コードを保存しておくと安心です。`
-            : "まだバックアップがありません。コードを保存しておくと、端末が壊れても安心です。";
+            ? `最後のバックアップから ${Math.floor(d)} 日たちました。CSVを書き出しておくと安心です。`
+            : "まだバックアップがありません。CSVを書き出しておくと、端末が壊れても安心です。";
     }
     el.style.display = "flex";
 }
 
 function initApp() {
+    updateCurrencyChrome();
     lockAppShellScroll();
     requestPersistentStorage();
     registerServiceWorker();
@@ -392,7 +491,7 @@ function warnSaveFailed() {
     const now = Date.now();
     if (now - lastSaveWarnAt < 15000) return;
     lastSaveWarnAt = now;
-    alert("データを保存できませんでした。\nブラウザの保存容量がいっぱいか、プライベートモードの可能性があります。\n「データ移行」でコードを保存しておくと安心です。");
+    alert("データを保存できませんでした。\nブラウザの保存容量がいっぱいか、プライベートモードの可能性があります。\n「データ管理」でCSVを書き出しておくと安心です。");
 }
 
 function saveData() {
@@ -505,10 +604,10 @@ function renderBudgetSummary() {
 
     if (fab) fab.classList.toggle("needs-budget", isViewingCurrentMonth() && budget <= 0);
 
-    if (summarySpent) summarySpent.textContent = spent.toLocaleString();
-    if (summaryBudget) summaryBudget.textContent = budget.toLocaleString();
+    if (summarySpent) summarySpent.textContent = formatMoney(spent);
+    if (summaryBudget) summaryBudget.textContent = formatMoney(budget);
 
-    if (budgetBox) budgetBox.classList.remove("state-warn", "state-over");
+    if (budgetBox) budgetBox.classList.remove("state-over");
 
     if (budget <= 0) {
         if (remainingText) {
@@ -534,8 +633,7 @@ function renderBudgetSummary() {
     }
 
     if (budgetBox) {
-        if (ratio > 1) budgetBox.classList.add("state-over");
-        else if (ratio >= 0.8) budgetBox.classList.add("state-warn");
+        if (ratio > 0.8) budgetBox.classList.add("state-over");
     }
 
     const isOverNow = ratio > 1;
@@ -619,7 +717,7 @@ function renderCategoryBudgetEditor() {
                 <input type="number" class="category-budget-input" data-cat-id="${escapeHtml(cat.id)}"
                        value="${amount > 0 ? amount : ""}" min="0" step="100" placeholder="未設定"
                        inputmode="numeric" aria-label="${escapeHtml(cat.name)}の予算">
-                <span class="category-budget-unit">円</span>
+                <span class="category-budget-unit" data-i18n-skip="1">${escapeHtml(currencyMeta().symbol)}</span>
             </span>
         `;
         list.appendChild(row);
@@ -796,11 +894,7 @@ function deleteCategoryById(id) {
     }
 
     saveData();
-    renderCategoryManageList();
-    renderCategorySelect();
-    renderFilterCategoryOptions();
-    renderExpenseTimeline();
-    renderCharts();
+    refreshCategoryViews();
     closeCategoryForm();
 }
 
@@ -918,7 +1012,6 @@ function updateFilterIndicator(count, total) {
 function renderExpenseTimeline() {
     renderBreakdownTitle();
     renderBreakdown();
-    renderRoomLevel();
 
     const container = document.getElementById("expense-timeline");
     if (!container) return;
@@ -1041,8 +1134,7 @@ function renderBreakdown() {
         const pct = hasCap
             ? Math.min(100, Math.round(ratio * 100))
             : Math.max(4, Math.round((amt / max) * 100));
-        const stateClass = hasCap && ratio > 1 ? " is-over"
-            : (hasCap && ratio >= 0.8 ? " is-warn" : "");
+        const stateClass = hasCap && ratio > 0.8 ? " is-over" : "";
         const value = hasCap
             ? `${amt.toLocaleString()} / ${cap.toLocaleString()} 円`
             : `${amt.toLocaleString()} 円`;
@@ -1056,14 +1148,6 @@ function renderBreakdown() {
         `;
         list.appendChild(row);
     });
-}
-
-function getRoomLevel() {
-    return Math.min(99, Math.floor(activeExpenses().length / 5) + 1);
-}
-function renderRoomLevel() {
-    const el = document.getElementById("room-level");
-    if (el) el.textContent = "Lv." + getRoomLevel();
 }
 
 function formatDateLabel(isoStr) {
@@ -1092,7 +1176,8 @@ function validateExpenseInput() {
     const btnSave = document.getElementById("btn-save-expense");
     if (!amountInput || !btnSave) return;
     const amount = parseFloat(amountInput.value);
-    btnSave.disabled = isNaN(amount) || amount <= 0;
+    const needsConfirmation = receiptMismatchPending && !receiptMismatchConfirmed;
+    btnSave.disabled = isNaN(amount) || amount <= 0 || needsConfirmation;
 }
 
 // ==========================================
@@ -1176,32 +1261,13 @@ function setupModalBackdropClose() {
 }
 
 function setupEventListeners() {
-    // ヘッダーの「その他」メニュー
-    const moreButton = document.getElementById("btn-open-more");
-    const moreMenu = document.getElementById("header-more-menu");
-    if (moreButton && moreMenu) {
-        const closeMoreMenu = () => {
-            moreMenu.classList.remove("open");
-            moreButton.setAttribute("aria-expanded", "false");
-        };
-        moreButton.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const willOpen = !moreMenu.classList.contains("open");
-            moreMenu.classList.toggle("open", willOpen);
-            moreButton.setAttribute("aria-expanded", willOpen ? "true" : "false");
-        });
-        moreMenu.addEventListener("click", (e) => {
-            if (e.target.closest("button")) closeMoreMenu();
-        });
-        document.addEventListener("click", (e) => {
-            if (!moreMenu.classList.contains("open")) return;
-            if (moreMenu.contains(e.target) || moreButton.contains(e.target)) return;
-            closeMoreMenu();
-        });
-        document.addEventListener("keydown", (e) => {
-            if (e.key === "Escape") closeMoreMenu();
-        });
-    }
+    // ヘッダーのメニュー（画面いっぱいに開く）
+    const menuModal = document.getElementById("modal-menu");
+    document.getElementById("btn-open-more")?.addEventListener("click", () => menuModal?.classList.add("open"));
+    document.getElementById("btn-close-menu")?.addEventListener("click", () => menuModal?.classList.remove("open"));
+    menuModal?.addEventListener("click", (e) => {
+        if (e.target.closest(".more-item")) menuModal.classList.remove("open");
+    });
 
     const btnEditBudget = document.getElementById("btn-edit-budget");
     if (btnEditBudget) {
@@ -1267,7 +1333,7 @@ function setupEventListeners() {
     }
 
     const expenseAmount = document.getElementById("expense-amount");
-    if (expenseAmount) expenseAmount.addEventListener("input", validateExpenseInput);
+    if (expenseAmount) expenseAmount.addEventListener("input", refreshReceiptMismatchState);
 
     const btnSaveExpense = document.getElementById("btn-save-expense");
     if (btnSaveExpense) {
@@ -1285,6 +1351,14 @@ function setupEventListeners() {
             const when = parseDatetimeLocalValue(datetimeEl ? datetimeEl.value : "") || now;
 
             if (isNaN(amount) || amount <= 0) return;
+
+            if (pendingReceipt) {
+                const receiptCheck = validateReceipt(currentReceiptDraft());
+                if (receiptCheck.mismatch && !receiptMismatchConfirmed) {
+                    showToast("明細と合計が一致していません。確認チェックを入れてから保存してください。");
+                    return;
+                }
+            }
 
             if (localMonthKey(when) > getCurrentMonthKey()) {
                 alert("来月以降の日付は記録できません。日時を確認してください。");
@@ -1349,10 +1423,7 @@ function setupEventListeners() {
 
             if (targetMonth && targetMonth !== selectedMonthKey) setViewMonth(targetMonth);
 
-            renderBudgetSummary();
-            renderExpenseTimeline();
-            renderCharts();
-            renderPlanCard();
+            refreshAfterExpenseChange();
 
             if (editId) {
                 spawnPetReaction("favorite");
@@ -1399,8 +1470,6 @@ function setupEventListeners() {
             renderOcrSettingsForm();
             const status = document.getElementById("data-import-status");
             if (status) status.textContent = "";
-            const backupStatus = document.getElementById("data-backup-status");
-            if (backupStatus) backupStatus.textContent = "";
             const modal = document.getElementById("modal-data");
             if (modal) modal.classList.add("open");
         });
@@ -1414,16 +1483,8 @@ function setupEventListeners() {
         });
     }
 
-    const btnExportCsv = document.getElementById("btn-export-csv");
-    if (btnExportCsv) {
-        btnExportCsv.addEventListener("click", exportExpensesAsCsv);
-    }
-
-    // 統合CSV（家計＋マイルーム）の書き出し
-    const btnExportUnifiedCsv = document.getElementById("btn-export-unified-csv");
-    if (btnExportUnifiedCsv) {
-        btnExportUnifiedCsv.addEventListener("click", exportUnifiedCsv);
-    }
+    // CSV の書き出しは1つだけ（家計簿・予算・カテゴリ・プラン・マイルームを全部まとめる）
+    document.getElementById("btn-export-csv")?.addEventListener("click", exportUnifiedCsv);
 
     // CSV読み込み（統合CSV/支出CSVを自動判別）
     const inputImportCsv = document.getElementById("input-import-csv");
@@ -1492,9 +1553,7 @@ function setupEventListeners() {
             }
 
             saveData();
-            renderCategoryManageList();
-            renderCategorySelect();
-            renderExpenseTimeline();
+            refreshCategoryViews();
             closeCategoryForm();
         });
     }
@@ -1554,7 +1613,7 @@ function setupEventListeners() {
         const amountEl = document.getElementById("expense-amount");
         if (total > 0 && amountEl) {
             amountEl.value = total;
-            validateExpenseInput();
+            refreshReceiptMismatchState();
         }
     });
 
@@ -1602,20 +1661,10 @@ function setupEventListeners() {
     document.getElementById("btn-save-ocr")?.addEventListener("click", saveOcrSettingsFromForm);
     document.getElementById("btn-test-ocr")?.addEventListener("click", testOcrConnection);
 
-    document.getElementById("btn-export-backup")?.addEventListener("click", exportBackupFile);
-    const backupInput = document.getElementById("input-import-backup");
-    if (backupInput) {
-        backupInput.addEventListener("change", (e) => {
-            const file = e.target.files && e.target.files[0];
-            if (file) importBackupFile(file);
-            backupInput.value = "";
-        });
-    }
     document.getElementById("btn-backup-banner-open")?.addEventListener("click", () => {
         appPrefs.backupRemindedAt = new Date().toISOString();
         savePrefs();
-        renderBackupBanner();
-        openTransferModal();
+        exportUnifiedCsv();
     });
     document.getElementById("btn-backup-banner-later")?.addEventListener("click", () => {
         appPrefs.backupRemindedAt = new Date().toISOString();
@@ -1644,28 +1693,6 @@ function setupEventListeners() {
             if (appPrefs.haptics) vibrate(30);
         });
     }
-    document.getElementById("btn-export-csv")?.addEventListener("click", markBackupDone);
-    document.getElementById("btn-export-unified-csv")?.addEventListener("click", markBackupDone);
-    document.getElementById("btn-export-backup")?.addEventListener("click", markBackupDone);
-    document.getElementById("btn-open-account")?.addEventListener("click", openTransferModal);
-    document.getElementById("btn-open-transfer")?.addEventListener("click", () => {
-        document.getElementById("modal-data")?.classList.remove("open");
-        openTransferModal();
-    });
-    document.getElementById("btn-close-transfer")?.addEventListener("click", () => {
-        document.getElementById("modal-transfer")?.classList.remove("open");
-    });
-    document.getElementById("btn-copy-transfer-code")?.addEventListener("click", copyTransferCode);
-    document.getElementById("btn-paste-transfer-code")?.addEventListener("click", pasteTransferCode);
-    document.getElementById("btn-save-transfer-file")?.addEventListener("click", saveTransferCodeFile);
-    document.getElementById("btn-share-transfer-code")?.addEventListener("click", shareTransferCode);
-    document.getElementById("input-transfer-file")?.addEventListener("change", (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (file) loadTransferCodeFile(file);
-        e.target.value = "";
-    });
-    document.getElementById("btn-import-transfer-merge")?.addEventListener("click", () => importTransferCode("merge"));
-    document.getElementById("btn-import-transfer-replace")?.addEventListener("click", () => importTransferCode("replace"));
 
     setupModalBackdropClose();
 }
@@ -1682,7 +1709,7 @@ function addItemRow(name = "", price = "", categoryId = null) {
     row.innerHTML = `
         <input type="text" class="item-name" placeholder="品目（例：牛乳）" value="${escapeHtml(name)}" maxlength="40">
         <input type="number" class="item-price" placeholder="0" min="0" step="1" value="${price === "" || price === undefined ? "" : (Number(price) || 0)}">
-        <span class="item-unit">円</span>
+        <span class="item-unit" data-i18n-skip="1">${escapeHtml(currencyMeta().symbol)}</span>
         <button type="button" class="item-remove" data-item-remove title="この行を削除">
             <span class="material-icons-round">close</span>
         </button>
@@ -1721,9 +1748,11 @@ function updateItemsSummary() {
     const items = collectItemsFromForm();
     if (items.length === 0) {
         el.textContent = "";
+        refreshReceiptMismatchState();
         return;
     }
     el.textContent = `品目 ${items.length}点・合計 ${sumItemPrices().toLocaleString()} 円`;
+    refreshReceiptMismatchState();
 }
 
 function renderItemsEditor(items) {
@@ -1826,11 +1855,25 @@ function showUndoBar(message, onUndo) {
     undoBarTimer = setTimeout(hideUndoBar, 6000);
 }
 
-function refreshAfterExpenseChange() {
+// お金まわりの画面（予算・内訳・記録・グラフ・プラン・バックアップ案内）をまとめて描き直す
+function renderMoneyViews() {
     renderBudgetSummary();
     renderExpenseTimeline();
     renderCharts();
     renderPlanCard();
+    renderBackupBanner();
+}
+
+function refreshAfterExpenseChange() {
+    renderMoneyViews();
+}
+
+// カテゴリが変わったときに、選択肢・内訳・グラフまで一度に更新する
+function refreshCategoryViews() {
+    renderCategoryManageList();
+    renderCategorySelect();
+    renderFilterCategoryOptions();
+    renderMoneyViews();
 }
 
 function deleteExpense(id) {
@@ -1871,61 +1914,6 @@ function csvEscape(value) {
         return '"' + str.replace(/"/g, '""') + '"';
     }
     return str;
-}
-
-function parseCsv(text) {
-    return parseDelimitedText(text, ",");
-}
-
-function exportExpensesAsCsv() {
-    const header = ["日時", "カテゴリ", "金額", "メモ", "店舗", "品目"];
-    const rows = [header];
-    const sorted = [...activeExpenses()].sort((a, b) => String(a.datetime).localeCompare(String(b.datetime)));
-    sorted.forEach(exp => {
-        const cat = getCategoryById(exp.categoryId);
-        rows.push([
-            exp.datetime,
-            cat ? cat.name : "不明",
-            exp.amount,
-            exp.memo || "",
-            exp.store || "",
-            (exp.items && exp.items.length) ? JSON.stringify(exp.items) : ""
-        ]);
-    });
-
-    const csvContent = rows.map(r => r.map(csvEscape).join(",")).join("\r\n");
-    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const now = new Date();
-    const fname = `yoyu_aru_expenses_${localDateKey(now).replace(/-/g, "")}.csv`;
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fname;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-function parseItemsCell(raw) {
-    const text = String(raw || "").trim();
-    if (!text) return [];
-
-    if (text.charAt(0) === "[") {
-        try {
-            const parsed = JSON.parse(text);
-            if (Array.isArray(parsed)) return parsed.map(normalizeItem);
-        } catch (e) { /* 下の簡易形式へフォールバック */ }
-    }
-
-    return text.split("|").map(part => {
-        const bits = part.split(":");
-        const name = (bits[0] || "").trim();
-        const price = parseFloat((bits[1] || "").replace(/[^\d.-]/g, ""));
-        if (!name) return null;
-        return normalizeItem({ name, price: isNaN(price) ? 0 : price, qty: 1 });
-    }).filter(Boolean);
 }
 
 // ==========================================
@@ -2003,17 +1991,8 @@ function expenseFingerprint(exp) {
     return [date, amount, store, memo, items].join("\u0001");
 }
 
-function importExpensesFromCsvText(text, statusEl) {
-    const delimiter = detectDelimiter(text);
-    const rows = parseDelimitedText(text, delimiter);
-    const parsed = buildExpensesFromRows(rows);
-
-    if (parsed.records.length === 0 && parsed.skipped === 0 && parsed.deposits === 0) {
-        if (statusEl) statusEl.textContent = "読み込めるデータがありませんでした。";
-        return;
-    }
-
-    // 既存の記録と、このファイル内で先に取り込んだ記録の両方を照合する
+// 解析済みの行を支出として追加する（重複はスキップ）。通常CSVも統合CSVもこれを使う。
+function addImportedExpenses(records) {
     const known = new Set();
     appData.expenses.forEach(e => {
         const fp = expenseFingerprint(e);
@@ -2022,20 +2001,15 @@ function importExpensesFromCsvText(text, statusEl) {
 
     let added = 0;
     let duplicates = 0;
-    parsed.records.forEach(rec => {
+    records.forEach(rec => {
         const when = rec.date;
-        const fingerprint = expenseFingerprint({
-            dateKey: localDateKey(when),
-            amount: rec.amount,
-            store: rec.store || "",
-            memo: rec.memo || "",
-            items: Array.isArray(rec.items) ? rec.items : []
+        const items = Array.isArray(rec.items) ? rec.items.map(normalizeItem) : [];
+        const fp = expenseFingerprint({
+            dateKey: localDateKey(when), amount: rec.amount,
+            store: rec.store || "", memo: rec.memo || "", items: items
         });
-        if (fingerprint && known.has(fingerprint)) {
-            duplicates++;
-            return;
-        }
-        if (fingerprint) known.add(fingerprint);
+        if (fp && known.has(fp)) { duplicates++; return; }
+        if (fp) known.add(fp);
 
         const categoryName = rec.categoryName || "その他";
         let category = appData.categories.find(c => c.name === categoryName);
@@ -2044,7 +2018,7 @@ function importExpensesFromCsvText(text, statusEl) {
             appData.categories.push(category);
         }
 
-        const items = Array.isArray(rec.items) ? rec.items.map(normalizeItem) : [];
+        const nowIso = new Date().toISOString();
         appData.expenses.push({
             id: newId(),
             amount: rec.amount,
@@ -2057,11 +2031,25 @@ function importExpensesFromCsvText(text, statusEl) {
             monthKey: localMonthKey(when),
             source: "csv",
             deletedAt: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            createdAt: nowIso,
+            updatedAt: nowIso
         });
         added++;
     });
+    return { added, duplicates };
+}
+
+function importExpensesFromCsvText(text, statusEl) {
+    const delimiter = detectDelimiter(text);
+    const rows = parseDelimitedText(text, delimiter);
+    const parsed = buildExpensesFromRows(rows);
+
+    if (parsed.records.length === 0 && parsed.skipped === 0 && parsed.deposits === 0) {
+        if (statusEl) statusEl.textContent = "読み込めるデータがありませんでした。";
+        return;
+    }
+
+    const { added, duplicates } = addImportedExpenses(parsed.records);
 
     saveData();
     refreshAllViews();
@@ -2137,6 +2125,12 @@ function buildUnifiedCsvText() {
         ].map(csvEscape).join(","));
     });
 
+    if (appData.plan) {
+        lines.push("");
+        lines.push("# PLAN");
+        lines.push(csvEscape(JSON.stringify(appData.plan)));
+    }
+
     lines.push("");
     lines.push("# ROOM");
     lines.push("key,value");
@@ -2159,24 +2153,21 @@ function buildUnifiedCsvText() {
 }
 
 function exportUnifiedCsv() {
-    const text = buildUnifiedCsvText();
-    const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([buildUnifiedCsvText()], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const now = new Date();
-    const fname = `yoyu_aru_all_${localDateKey(now).replace(/-/g, "")}.csv`;
-
     const a = document.createElement("a");
     a.href = url;
-    a.download = fname;
+    a.download = `yoyu_aru_all_${localDateKey(new Date()).replace(/-/g, "")}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    markBackupDone();
 }
 
 // 統合CSVの本文を "# SECTION" 単位で分割して行配列にする
 function splitUnifiedCsv(text) {
-    const out = { categories: [], budgets: [], categoryBudgets: [], expenses: [], room: [] };
+    const out = { categories: [], budgets: [], categoryBudgets: [], expenses: [], plan: [], room: [] };
     const lines = String(text || "").replace(/^\uFEFF/, "").split(/\r?\n/);
     let current = null;
 
@@ -2185,7 +2176,7 @@ function splitUnifiedCsv(text) {
         const trimmed = raw.trim();
         if (!trimmed) continue;
 
-        const m = trimmed.match(/^#\s*(CATEGORIES|BUDGETS|CATEGORY_BUDGETS|EXPENSES|ROOM)\s*$/i);
+        const m = trimmed.match(/^#\s*(CATEGORIES|BUDGETS|CATEGORY_BUDGETS|EXPENSES|PLAN|ROOM)\s*$/i);
         if (m) {
             current = m[1].toLowerCase() === "category_budgets"
                 ? "categoryBudgets"
@@ -2274,50 +2265,17 @@ function importUnifiedCsvText(text) {
         const rows = [sections.expenses[0], ...sections.expenses.slice(1)];
         const parsed = buildExpensesFromRows(rows);
 
-        const known = new Set();
-        appData.expenses.forEach(e => {
-            const fp = expenseFingerprint(e);
-            if (fp) known.add(fp);
-        });
+        const result = addImportedExpenses(parsed.records);
+        addedExpenses = result.added;
+        skippedDuplicates = result.duplicates;
+    }
 
-        parsed.records.forEach(rec => {
-            const when = rec.date;
-            const fingerprint = expenseFingerprint({
-                dateKey: localDateKey(when),
-                amount: rec.amount,
-                store: rec.store || "",
-                memo: rec.memo || "",
-                items: Array.isArray(rec.items) ? rec.items : []
-            });
-            if (fingerprint && known.has(fingerprint)) {
-                skippedDuplicates++;
-                return;
-            }
-            if (fingerprint) known.add(fingerprint);
-
-            const categoryName = rec.categoryName || "その他";
-            let category = appData.categories.find(c => c.name === categoryName);
-            if (!category) {
-                category = { id: newId(), name: categoryName };
-                appData.categories.push(category);
-            }
-            appData.expenses.push({
-                id: newId(),
-                amount: rec.amount,
-                categoryId: category.id,
-                memo: rec.memo || "",
-                store: rec.store || "",
-                items: Array.isArray(rec.items) ? rec.items.map(normalizeItem) : [],
-                datetime: when.toISOString(),
-                dateKey: localDateKey(when),
-                monthKey: localMonthKey(when),
-                source: "csv",
-                deletedAt: null,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            });
-            addedExpenses++;
-        });
+    // --- 貯金プラン ---
+    if (sections.plan.length > 0 && sections.plan[0][0]) {
+        try {
+            const plan = JSON.parse(sections.plan[0][0]);
+            if (plan && plan.ok) appData.plan = plan;
+        } catch (e) { /* 壊れたプランは無視 */ }
     }
 
     // --- マイルーム（丸ごと差し替え） ---
@@ -2401,11 +2359,8 @@ function resetCurrentMonthData() {
     saveData();
     renderMonthNav();
     renderPeriodLabel();
-    renderBudgetSummary();
-    renderExpenseTimeline();
-    renderCharts();
-    renderPlanCard();
     renderBudgetInputValue();
+    renderMoneyViews();
     renderStorageInfo();
 }
 
@@ -2478,6 +2433,9 @@ function refreshAllViews() {
     renderStorageInfo();
     renderRoomPreview();
     renderCurrency();
+    renderAffinity();
+    renderLoginStreak();
+    renderBackupBanner();
 }
 
 // ==========================================
@@ -2707,9 +2665,85 @@ function clearPlan() {
 // 12. レシート読み取り（OCR）
 // ==========================================
 let pendingReceipt = null;
+let receiptMismatchPending = false;
+let receiptMismatchConfirmed = false;
+
+function currentReceiptDraft() {
+    const amountEl = document.getElementById("expense-amount");
+    const total = amountEl ? (parseFloat(amountEl.value) || 0) : 0;
+    const base = pendingReceipt && pendingReceipt.receipt ? pendingReceipt.receipt : {};
+    return {
+        total,
+        items: collectItemsFromForm(),
+        tax8: Number(base.tax8) || 0,
+        tax10: Number(base.tax10) || 0
+    };
+}
+
+function clearReceiptMismatchMarks() {
+    document.querySelectorAll("#expense-items-list .item-row.is-receipt-mismatch").forEach(row => {
+        row.classList.remove("is-receipt-mismatch");
+        row.querySelectorAll("input").forEach(input => input.removeAttribute("aria-invalid"));
+    });
+    const amountEl = document.getElementById("expense-amount");
+    if (amountEl) amountEl.classList.remove("is-receipt-mismatch");
+}
+
+function markReceiptMismatchRows(diff, mismatch) {
+    clearReceiptMismatchMarks();
+    if (!mismatch) return;
+
+    const rows = Array.from(document.querySelectorAll("#expense-items-list .item-row"));
+    let target = null;
+    if (diff > 2) {
+        // 差額とちょうど同じ金額の行があれば、その行を最有力候補として強調する。
+        target = rows.find(row => {
+            const input = row.querySelector(".item-price");
+            return Math.abs((parseFloat(input ? input.value : "") || 0) - diff) < 1;
+        }) || null;
+    }
+
+    rows.forEach(row => {
+        if (!target || row === target) {
+            row.classList.add("is-receipt-mismatch");
+            row.querySelectorAll("input").forEach(input => input.setAttribute("aria-invalid", "true"));
+        }
+    });
+
+    // 合計の方が大きい（明細が足りない）ときは、合計欄も一緒に強調する。
+    if (diff < -2 || !target) {
+        const amountEl = document.getElementById("expense-amount");
+        if (amountEl) amountEl.classList.add("is-receipt-mismatch");
+    }
+}
+
+function refreshReceiptMismatchState() {
+    if (!pendingReceipt) {
+        receiptMismatchPending = false;
+        receiptMismatchConfirmed = false;
+        clearReceiptMismatchMarks();
+        validateExpenseInput();
+        return;
+    }
+
+    const check = validateReceipt(currentReceiptDraft());
+    receiptMismatchPending = !!check.mismatch;
+    // 明細・合計を編集したら、前の確認は無効にする。
+    receiptMismatchConfirmed = false;
+
+    const gate = document.getElementById("receipt-mismatch-gate");
+    if (gate) gate.hidden = !receiptMismatchPending;
+    const checkbox = document.getElementById("receipt-mismatch-check");
+    if (checkbox) checkbox.checked = false;
+
+    markReceiptMismatchRows(check.diff, receiptMismatchPending);
+    validateExpenseInput();
+}
 
 function resetReceiptUi() {
     pendingReceipt = null;
+    receiptMismatchPending = false;
+    receiptMismatchConfirmed = false;
 
     const statusEl = document.getElementById("receipt-status");
     if (statusEl) statusEl.textContent = "";
@@ -2722,6 +2756,8 @@ function resetReceiptUi() {
 
     const warnings = document.getElementById("receipt-warnings");
     if (warnings) warnings.innerHTML = "";
+
+    clearReceiptMismatchMarks();
 
     const input = document.getElementById("input-receipt-image");
     if (input) input.value = "";
@@ -2745,7 +2781,7 @@ async function handleReceiptFile(file) {
 
     if (!file) return;
 
-    if (!isOcrConfigured()) {
+    if (!isReceiptScanAvailable()) {
         setStatus("先に「データ管理」でAPIキーを設定してください。手入力はそのまま使えます。");
         return;
     }
@@ -2764,7 +2800,8 @@ async function handleReceiptFile(file) {
         }
 
         applyReceiptToForm(result.receipt, resized.dataUrl);
-        setStatus("読み取り結果を反映しました。内容を確認してください。");
+        setStatus("読み取り結果を反映しました。内容を確認してください。"
+            + (typeof result.remaining === "number" ? `（今日はあと${result.remaining}回）` : ""));
         playCoin();
         vibrate(20);
     } catch (e) {
@@ -2816,9 +2853,38 @@ function renderReceiptPreview(dataUrl, receipt) {
 
     if (warnEl) {
         const check = validateReceipt(receipt);
-        warnEl.innerHTML = check.warnings.length > 0
-            ? check.warnings.map(w => `<p class="receipt-warning">${escapeHtml(w)}</p>`).join("")
-            : `<p class="receipt-ok">品目の合計とレシートの合計が一致しました</p>`;
+        const t = (ja) => {
+            try { return window.I18N ? I18N.t(ja) : ja; } catch (e) { return ja; }
+        };
+        let html = check.warnings.length > 0
+            ? check.warnings.map((w, i) => {
+                const cls = check.mismatch && i === 0
+                    ? "receipt-warning receipt-warning-mismatch"
+                    : "receipt-warning";
+                return `<p class="${cls}">${escapeHtml(w)}</p>`;
+            }).join("")
+            : `<p class="receipt-ok">${escapeHtml(t("品目の合計とレシートの合計が一致しました"))}</p>`;
+
+        if (check.mismatch) {
+            html += `
+                <div class="receipt-mismatch-gate" id="receipt-mismatch-gate">
+                    <p class="receipt-mismatch-hint">${escapeHtml(t("黄色で示した行の金額を確認してください。"))}</p>
+                    <label class="receipt-mismatch-label">
+                        <input type="checkbox" id="receipt-mismatch-check">
+                        <span>${escapeHtml(t("明細と合計が一致しないことを確認しました"))}</span>
+                    </label>
+                </div>`;
+        }
+        warnEl.innerHTML = html;
+
+        const checkbox = document.getElementById("receipt-mismatch-check");
+        if (checkbox) {
+            checkbox.addEventListener("change", () => {
+                receiptMismatchConfirmed = !!checkbox.checked;
+                validateExpenseInput();
+            });
+        }
+        refreshReceiptMismatchState();
     }
 }
 
@@ -2862,9 +2928,14 @@ function updateOcrStatus(message) {
     const el = document.getElementById("ocr-status");
     if (!el) return;
     if (message) { el.textContent = message; return; }
-    el.textContent = isOcrConfigured()
-        ? "設定済み：レシートから読み取れます"
-        : "未設定：手入力のみ使えます";
+    const s = getOcrSettings();
+    if (s.apiKey) {
+        el.textContent = "設定済み：レシートから読み取れます";
+    } else if (OCR_SERVER_URL) {
+        el.textContent = "おまかせ読み取り：サーバー経由で使えます";
+    } else {
+        el.textContent = "未設定：手入力のみ使えます";
+    }
 }
 
 function saveOcrSettingsFromForm() {
@@ -2896,12 +2967,20 @@ function buildOcrTestImage() {
 
 async function testOcrConnection() {
     const s = readOcrSettingsForm();
-    if (!s.apiKey) {
-        updateOcrStatus("APIキーを入力してください。");
-        return;
-    }
     saveOcrSettings(s);
     updateOcrStatus("接続を確認しています…");
+
+    if (!s.apiKey) {
+        if (!OCR_SERVER_URL) {
+            updateOcrStatus("APIキーを入力するか、おまかせ読み取りのサーバーを設定してください。");
+            return;
+        }
+        const probe = await testReceiptServer();
+        updateOcrStatus(probe.ok
+            ? "おまかせ読み取りに接続できました。"
+            : `接続できませんでした：${probe.error || "サーバーが応答しません"}`);
+        return;
+    }
 
     const fallback = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==";
     const image = buildOcrTestImage() || fallback;
@@ -2914,264 +2993,33 @@ async function testOcrConnection() {
     updateOcrStatus(`接続できませんでした：${res.error || "原因不明のエラー"}`);
 }
 
-// ==========================================
-// 13. バックアップ
-// ==========================================
-function setBackupStatus(message) {
-    const el = document.getElementById("data-backup-status");
-    if (el) el.textContent = message;
-}
-
-function exportBackupFile() {
-    const text = serializeBackup(appData, roomData);
-    const blob = new Blob([text], { type: "application/json;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `yoyu_aru_backup_${localDateKey(new Date()).replace(/-/g, "")}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setBackupStatus("バックアップを書き出しました。新しい端末で読み込んでください。");
-}
-
-function describeMergeStats(stats) {
-    const s = stats || {};
-    const byType = s.byType || null;
-
-    if (!byType) {
-        const parts = [];
-        if (s.pulled) parts.push(`追加 ${s.pulled}件`);
-        if (s.updated) parts.push(`更新 ${s.updated}件`);
-        if (s.keptLocal) parts.push(`手元を優先 ${s.keptLocal}件`);
-        if (parts.length === 0) parts.push("変更なし");
-        return parts.join(" ／ ");
-    }
-
-    const exp = byType.expenses || {};
-    const cat = byType.categories || {};
-    const bud = byType.budget || {};
-
-    const parts = [];
-    if (exp.pulled) parts.push(`支出 ${exp.pulled}件`);
-    if (exp.updated) parts.push(`支出の更新 ${exp.updated}件`);
-    if (cat.pulled) parts.push(`カテゴリ ${cat.pulled}件`);
-    if (bud.pulled) parts.push(`予算 ${bud.pulled}件`);
-    if (bud.updated) parts.push(`予算の更新 ${bud.updated}件`);
-    if (parts.length === 0) parts.push("変更なし");
-
-    if (s.conflicts > 0) parts.push(`食い違い ${s.conflicts}件は新しい方を採用`);
-    return parts.join(" ／ ");
-}
-
-function importBackupFile(file) {
-    if (!file) return;
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-        const parsed = parseBackup(String(e.target.result));
-        if (!parsed.ok) {
-            setBackupStatus(parsed.error);
-            return;
-        }
-
-        const remoteApp = migrateData(parsed.data);
-        const appResult = mergeAppData(appData, remoteApp);
-        const roomResult = mergeRoomData(roomData, parsed.room);
-
-        appData = appResult.merged;
-        if (roomResult.merged) roomData = normalizeRoomData(roomResult.merged);
-
-        saveData();
-        saveRoomData();
-        refreshAllViews();
-
-        setBackupStatus(`統合しました：${describeMergeStats(appResult.stats)}`);
-    };
-
-    reader.onerror = () => setBackupStatus("ファイルを読み込めませんでした。");
-    reader.readAsText(file, "utf-8");
-}
-
-// ==========================================
-// 14. データ移行（コードをコピー／貼り付け）
-// ==========================================
-function setTransferStatus(message, isError) {
-    const el = document.getElementById("transfer-status");
-    if (!el) return;
-    el.textContent = message || "";
-    el.style.color = isError ? "var(--danger)" : "var(--accent-soft)";
-}
-
-// コードを軽くするため、30日より前に削除した記録は含めない。
-// （30日以内の削除は、統合したときに相手の端末へ伝わるよう残す）
-function buildTransferAppData() {
-    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const copy = Object.assign({}, appData);
-    copy.expenses = (appData.expenses || []).filter(e => !e || !e.deletedAt || String(e.deletedAt) >= cutoff);
-    return copy;
-}
-
-async function refreshTransferCode() {
-    const out = document.getElementById("transfer-code-out");
-    const sizeEl = document.getElementById("transfer-code-size");
-    if (!out) return "";
+async function testReceiptServer() {
+    if (!OCR_SERVER_URL) return { ok: false, error: "サーバーが未設定です" };
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 10000) : null;
     try {
-        const code = await encodeTransferCode(buildTransferAppData(), roomData);
-        out.value = code;
-        if (sizeEl) sizeEl.textContent = `${code.length.toLocaleString()} 文字（約${(code.length / 1024).toFixed(1)}KB）`;
-        return code;
+        const res = await fetch(OCR_SERVER_URL, {
+            method: "GET",
+            headers: supabaseFunctionHeaders(),
+            signal: controller ? controller.signal : undefined
+        });
+        if (!res.ok) return { ok: false, error: `サーバーが HTTP ${res.status} を返しました` };
+        const json = await res.json().catch(() => null);
+        if (json && json.ok === false) return { ok: false, error: json.error || "サーバーがエラーを返しました" };
+        return { ok: true };
     } catch (e) {
-        out.value = "";
-        setTransferStatus("コードを作れませんでした。", true);
-        return "";
+        const aborted = e && e.name === "AbortError";
+        return { ok: false, error: aborted ? "接続がタイムアウトしました" : "サーバーに接続できません" };
+    } finally {
+        if (controller) clearTimeout(timer);
     }
-}
-
-async function openTransferModal() {
-    setTransferStatus("");
-    const inp = document.getElementById("transfer-code-in");
-    if (inp) inp.value = "";
-    document.getElementById("modal-transfer")?.classList.add("open");
-    const shareBtn = document.getElementById("btn-share-transfer-code");
-    if (shareBtn) shareBtn.style.display = (typeof navigator.share === "function") ? "" : "none";
-    await refreshTransferCode();
-}
-
-async function copyTransferCode() {
-    const out = document.getElementById("transfer-code-out");
-    if (!out) return;
-    // 開いたあとに記録を足していても最新になるよう、コピーの直前に作り直す
-    const code = await refreshTransferCode();
-    if (!code) return;
-
-    try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(code);
-            setTransferStatus("コピーしました。新しい端末の「データ移行」に貼り付けてください。");
-            markBackupDone();
-            return;
-        }
-    } catch (e) { /* 下の手動選択へ */ }
-
-    out.focus();
-    out.select();
-    out.setSelectionRange(0, code.length);
-    let ok = false;
-    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
-    setTransferStatus(ok
-        ? "コピーしました。新しい端末の「データ移行」に貼り付けてください。"
-        : "自動でコピーできませんでした。選択された文字を長押しして「コピー」してください。", !ok);
-}
-
-async function pasteTransferCode() {
-    const inp = document.getElementById("transfer-code-in");
-    if (!inp) return;
-    try {
-        if (navigator.clipboard && navigator.clipboard.readText) {
-            inp.value = await navigator.clipboard.readText();
-            setTransferStatus(inp.value ? "貼り付けました。下のボタンで読み込んでください。" : "クリップボードが空です。", !inp.value);
-            return;
-        }
-    } catch (e) { /* 許可されなかった */ }
-    inp.focus();
-    setTransferStatus("自動で貼り付けられませんでした。枠を長押しして「貼り付け」を選んでください。", true);
-}
-
-async function saveTransferCodeFile() {
-    const code = await refreshTransferCode();
-    if (!code) return;
-    const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `yoyu_aru_code_${localDateKey(new Date()).replace(/-/g, "")}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setTransferStatus("ファイルに保存しました。新しい端末の「ファイルから読み込む」で選んでください。");
-    markBackupDone();
-}
-
-async function shareTransferCode() {
-    const code = await refreshTransferCode();
-    if (!code || typeof navigator.share !== "function") return;
-    try {
-        await navigator.share({ title: "余裕、ある？ データコード", text: code });
-        setTransferStatus("共有しました。");
-        markBackupDone();
-    } catch (e) {
-        if (e && e.name === "AbortError") return;
-        setTransferStatus("共有できませんでした。コピーかファイル保存を使ってください。", true);
-    }
-}
-
-function loadTransferCodeFile(file) {
-    const reader = new FileReader();
-    reader.onload = () => {
-        const inp = document.getElementById("transfer-code-in");
-        if (inp) inp.value = String(reader.result || "").trim();
-        setTransferStatus("ファイルを読み込みました。下のボタンで取り込んでください。");
-    };
-    reader.onerror = () => setTransferStatus("ファイルを読み込めませんでした。", true);
-    reader.readAsText(file, "utf-8");
-}
-
-// mode: "merge" = いまのデータと統合 / "replace" = コードの内容で置き換え
-async function importTransferCode(mode) {
-    const inp = document.getElementById("transfer-code-in");
-    const raw = inp ? inp.value.trim() : "";
-    if (!raw) {
-        setTransferStatus("先にコードを貼り付けてください。", true);
-        return;
-    }
-
-    setTransferStatus("読み込んでいます…");
-    const parsed = await decodeTransferCode(raw);
-    if (!parsed.ok) {
-        setTransferStatus(parsed.error, true);
-        return;
-    }
-    const incoming = migrateData(parsed.data);
-
-    let message;
-    if (mode === "replace") {
-        if (!confirm("この端末のデータ（支出・予算・カテゴリ・マイルーム）を、コードの内容で置き換えます。\nこの端末にある記録は消えます。よろしいですか？")) {
-            setTransferStatus("");
-            return;
-        }
-        appData = incoming;
-        roomData = normalizeRoomData(parsed.room || JSON.parse(JSON.stringify(DEFAULT_ROOM_DATA)));
-        message = `置き換えました：支出 ${activeExpenses().length}件`;
-    } else {
-        const appResult = mergeAppData(appData, incoming);
-        const roomResult = mergeRoomData(roomData, parsed.room);
-        appData = appResult.merged;
-        if (roomResult.merged) roomData = normalizeRoomData(roomResult.merged);
-        message = `統合しました：${describeMergeStats(appResult.stats)}`;
-    }
-
-    saveData();
-    saveRoomData();
-    if (inp) inp.value = "";
-    refreshAllViews();
-    centerRoomPreviewOnPet();
-    if (!roomData.pet) openPetSelectModal();
-
-    setTransferStatus(message);
-    playCoin();
-    refreshTransferCode();
-    // 記録が入ったら、初回ガイドはもう不要
-    if (activeExpenses().length > 0 && typeof finishOnboarding === "function") finishOnboarding();
 }
 
 // ==========================================
 // マイルーム（ペット・部屋・ショップ）
 // ==========================================
 const FURNITURE_CATALOG = [
-    { id: "nezumi_karakuri", img: "assets/nezumi_karakuri.png", price: 800 },
+    { id: "nezumi_karakuri", img: "assets/nezumi_karakuri.gif", price: 800 },
     { id: "toy_car_red", img: "assets/toy_car_red.png", price: 800 },
     { id: "wool_red", img: "assets/wool_red.png", price: 800 },
     { id: "toy_car", img: "assets/toy_car.png", price: 800 },
@@ -3183,9 +3031,9 @@ const FURNITURE_CATALOG = [
     { id: "hang_plant", img: "assets/hang_plant.png", price: 1800 },
     { id: "desk_01", img: "assets/desk_01.png", price: 3500 },
     { id: "rack", img: "assets/rack.png", price: 2000 },
-    { id: "danro", img: "assets/danro.png", price: 4800 },
+    { id: "danro", img: "assets/danro.gif", price: 4800 },
     { id: "window", img: "assets/window.png", price: 3600 },
-    { id: "clock", img: "assets/clock.png", price: 1600 },
+    { id: "clock", img: "assets/clock.gif", price: 1600 },
     { id: "recorder", img: "assets/recorder.png", price: 2500 },
     { id: "tv", img: "assets/tv.png", price: 3500 },
     { id: "tiki", img: "assets/tiki.png", price: 3000 },
@@ -3194,15 +3042,14 @@ const FURNITURE_CATALOG = [
     { id: "pet_bed_01", img: "assets/pet_bed_01.png", price: 4000 },
     { id: "pet_bed_02", img: "assets/pet_bed_02.png", price: 3700 },
     { id: "pet_bed_03", img: "assets/pet_bed_03.png", price: 3900 },
-    { id: "globe", img: "assets/globe.png", price: 900 },
-    { id: "fishbowl", img: "assets/fishbowl.png", price: 2400 },
-    { id: "fishtank", img: "assets/fishtank.png", price: 4000 }
+    { id: "globe", img: "assets/globe.gif", price: 900 },
+    { id: "fishbowl", img: "assets/fishbowl.gif", price: 2400 },
+    { id: "fishtank", img: "assets/fishtank.gif", price: 4000 }
 ];
 
 const PET_Z = 25;
 
-const ANIMATED_FURNITURE_GIF = {};
-const APP_VERSION = "2.18";
+const APP_VERSION = "3.6.4";
 
 const PET_AWAKE_IMG = {
     neko: "assets/neko_awake.png",
@@ -3218,6 +3065,104 @@ const PET_SLEEP_IMG = {
     hamster: "assets/hamster_sleep.png",
     panda: "assets/panda_sleep.png"
 };
+
+// ------------------------------------------
+// v3.1/v3.2 動作アニメ（あくび・のび・毛づくろい・ごはん・ボール遊び）
+// ------------------------------------------
+// assets/act_<ペット>_<動作>.webp（アニメーション WebP）。足元と中心は awake 画像と同じ位置に揃えてあり、
+// 小物（ボール・お皿）や のびた体が はみ出す分は、キャンバスを左右対称に広げて吸収している。
+//   w … キャンバス幅  aw … awake 画像の幅（どちらも元画像の px。比率だけが意味を持つ）
+//   ex … 左右に足した幅  top/bottom … 上下に足した高さ  cycle … 1周の長さ(ms)  once … 1回だけ再生
+const PET_ACTION_DEFS = {
+    neko: { yawn:{w:385,aw:345,ex:20,top:33,bottom:0,cycle:2120,once:true}, groom:{w:355,aw:345,ex:5,top:3,bottom:0,cycle:1380}, eat:{w:447,aw:345,ex:51,top:2,bottom:0,cycle:1470}, stretch:{w:465,aw:345,ex:60,top:9,bottom:0,cycle:2160,once:true}, ballplay:{w:393,aw:345,ex:24,top:13,bottom:16,cycle:1100} },
+    usagi: { yawn:{w:393,aw:345,ex:24,top:2,bottom:0,cycle:2120,once:true}, groom:{w:351,aw:345,ex:3,top:1,bottom:0,cycle:1380}, eat:{w:499,aw:345,ex:77,top:1,bottom:0,cycle:1470}, stretch:{w:423,aw:345,ex:39,top:5,bottom:0,cycle:2160,once:true}, ballplay:{w:393,aw:345,ex:24,top:13,bottom:15,cycle:1100} },
+    shiba: { yawn:{w:439,aw:431,ex:4,top:3,bottom:0,cycle:2120,once:true}, groom:{w:431,aw:431,ex:0,top:1,bottom:0,cycle:1380}, eat:{w:491,aw:431,ex:30,top:0,bottom:0,cycle:1470}, stretch:{w:533,aw:431,ex:51,top:13,bottom:0,cycle:2160,once:true}, ballplay:{w:531,aw:431,ex:50,top:13,bottom:4,cycle:1100} },
+    hamster: { yawn:{w:393,aw:381,ex:6,top:1,bottom:0,cycle:2120,once:true}, groom:{w:381,aw:381,ex:0,top:0,bottom:0,cycle:1380}, eat:{w:381,aw:381,ex:0,top:0,bottom:0,cycle:1470}, stretch:{w:475,aw:381,ex:47,top:2,bottom:0,cycle:2160,once:true}, ballplay:{w:505,aw:381,ex:62,top:10,bottom:10,cycle:1100} },
+    panda: { yawn:{w:453,aw:437,ex:8,top:0,bottom:0,cycle:2120,once:true}, groom:{w:437,aw:437,ex:0,top:0,bottom:0,cycle:1380}, eat:{w:445,aw:437,ex:4,top:0,bottom:0,cycle:1470}, stretch:{w:543,aw:437,ex:53,top:5,bottom:0,cycle:2160,once:true}, ballplay:{w:575,aw:437,ex:69,top:11,bottom:4,cycle:1100} }
+};
+
+function petActionDef(type, action) {
+    const d = PET_ACTION_DEFS[type];
+    return (d && d[action]) ? d[action] : null;
+}
+function petActionSrc(type, action) {
+    return "assets/act_" + type + "_" + action + ".webp";
+}
+
+// 同じ URL だと2回目以降に途中から始まることがあるので、
+// 毎回 blob URL を作り直して必ず最初のコマから再生する。
+const petGifBlobs = {};
+let petImgToken = 0;
+function petGifBlob(src) {
+    if (!petGifBlobs[src]) {
+        petGifBlobs[src] = fetch(src).then(res => {
+            if (!res.ok) throw new Error("webp " + res.status);
+            return res.blob();
+        });
+        petGifBlobs[src].catch(() => { delete petGifBlobs[src]; });
+    }
+    return petGifBlobs[src];
+}
+function preloadPetActions() {
+    if (!roomData || !roomData.pet) return;
+    const defs = PET_ACTION_DEFS[roomData.pet.type];
+    if (!defs) return;
+    Object.keys(defs).forEach(key => { petGifBlob(petActionSrc(roomData.pet.type, key)).catch(() => {}); });
+}
+function revokePetBlob(img) {
+    const old = img.dataset.blobUrl;
+    if (!old) return;
+    delete img.dataset.blobUrl;
+    setTimeout(() => URL.revokeObjectURL(old), 1500);
+}
+function resetPetImgLayout(img) {
+    img.style.width = "";
+    img.style.margin = "";
+}
+function setPetImgLayout(img, def) {
+    img.style.width = (def.w / def.aw * 100) + "%";
+    img.style.margin = (-def.top / def.aw * 100) + "% " + (-def.ex / def.aw * 100) + "% " + (-def.bottom / def.aw * 100) + "%";
+}
+
+// 状態に合った画像（寝ている／起きている／動作）をペットの <img> に入れる。
+// 動作画像は、届いた瞬間に大きさ補正と一緒に差し替える（届く前に大きさだけ変わらないように）。
+function petApplyImage(img, type, state, opts) {
+    const def = PET_STATES[state];
+    const action = def && def.action ? def.action : null;
+    const actionDef = action ? petActionDef(type, action) : null;
+    const token = String(++petImgToken);
+    img.dataset.petToken = token;
+    img.dataset.retried = "0";
+
+    if (!actionDef) {
+        resetPetImgLayout(img);
+        img.src = isSleepingState(state)
+            ? (PET_SLEEP_IMG[type] || PET_SLEEP_IMG.neko)
+            : (PET_AWAKE_IMG[type] || PET_AWAKE_IMG.neko);
+        revokePetBlob(img);
+        return false;
+    }
+
+    const src = petActionSrc(type, action);
+    if (opts && opts.immediate) {
+        setPetImgLayout(img, actionDef);
+        img.src = src;
+        return true;
+    }
+    petGifBlob(src).then(blob => {
+        if (img.dataset.petToken !== token || !img.isConnected) return;
+        const url = URL.createObjectURL(blob);
+        revokePetBlob(img);
+        img.dataset.blobUrl = url;
+        setPetImgLayout(img, actionDef);
+        img.src = url;
+    }).catch(() => {
+        if (img.dataset.petToken !== token || !img.isConnected) return;
+        setPetImgLayout(img, actionDef);
+        img.src = src;
+    });
+    return true;
+}
 
 // ペットの種類（ガチャで増える）。gobi は話すときの語尾。
 const PET_CATALOG = {
@@ -3255,7 +3200,11 @@ function roomExtraCsvPairs() {
         ["ownedMaps", (roomData.ownedMaps || []).join("|")],
         ["mapId", roomData.mapId || "default"],
         ["petNames", names],
-        ["gachaPulls", (roomData.gacha && roomData.gacha.pulls) || 0]
+        ["gachaPulls", (roomData.gacha && roomData.gacha.pulls) || 0],
+        ["loginStreakCount", (roomData.loginStreak && roomData.loginStreak.count) || 0],
+        ["loginStreakDate", (roomData.loginStreak && roomData.loginStreak.lastDate) || ""],
+        ["affinityScore", getAffinity().score],
+        ["affinityTotal", getAffinity().total]
     ];
 }
 
@@ -3269,6 +3218,14 @@ function applyRoomExtrasFromCsvMap(room, map) {
         if (i > 0) room.petNames[pair.slice(0, i)] = pair.slice(i + 1);
     });
     room.gacha = { pulls: parseInt(map.gachaPulls, 10) || 0 };
+    room.loginStreak = { count: parseInt(map.loginStreakCount, 10) || 0, lastDate: map.loginStreakDate || null };
+    if (map.affinityScore !== undefined) {
+        room.affinity = {
+            score: parseInt(map.affinityScore, 10) || 0,
+            total: parseInt(map.affinityTotal, 10) || 0,
+            todayDate: null, todayGain: 0, streakBonusDate: null
+        };
+    }
 }
 
 const PET_FLOOR_Y = 82;
@@ -3304,6 +3261,7 @@ const DEFAULT_ROOM_DATA = {
     ownedMaps: ["default"],
     mapId: "default",
     gacha: { pulls: 0 },
+    loginStreak: { count: 0, lastDate: null },
     affinity: null,
     mini: null
 };
@@ -3372,6 +3330,12 @@ function normalizeRoomData(raw) {
         };
     }
 
+    const ls = d.loginStreak;
+    d.loginStreak = {
+        count: Math.max(0, Math.floor(Number(ls && ls.count) || 0)),
+        lastDate: (ls && typeof ls.lastDate === "string") ? ls.lastDate : null
+    };
+
     delete d.mini;
     delete d.floating;
 
@@ -3401,8 +3365,7 @@ function saveRoomData(touch) {
 }
 
 function todayDateKey() {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    return localDateKey(new Date());
 }
 
 function getFurnitureById(id) {
@@ -3420,15 +3383,20 @@ const PET_STATES = {
     nap:     { dur: [14000, 38000],  weight: 9,  cls: "is-sleeping" },
     sleep:   { dur: [90000, 240000], weight: 0, nightWeight: 22, cls: "is-sleeping" },
     play:    { dur: [5000, 10000],   weight: 8,  cls: "is-playing", needsToy: true },
-    stretch: { dur: [1800, 2600],    weight: 6,  cls: "stretching" },
+    stretch: { dur: [1800, 2600],    weight: 6,  cls: "stretching", action: "stretch" },
+    yawn:    { dur: [2000, 2400],    weight: 5,  cls: "is-yawning",  action: "yawn" },
+    groom:   { dur: [4000, 6500],    weight: 8,  cls: "is-grooming", action: "groom" },
+    eat:     { dur: [4500, 7000],    weight: 5,  cls: "is-eating",   action: "eat" },
+    ballplay:{ dur: [4500, 7500],    weight: 7,  cls: "is-ballplay", action: "ballplay" },
     happy:   { dur: [2400, 3400],    weight: 0,  cls: "is-happy" },
     sad:     { dur: [5000, 9000],    weight: 0,  cls: "is-sad" },
     petted:  { dur: [2000, 3000],    weight: 0,  cls: "is-petted" }
 };
 
-const PET_ONESHOT_STATES = ["stretch", "happy", "sad", "petted"];
+const PET_ONESHOT_STATES = ["stretch", "yawn", "happy", "sad", "petted"];
 
 let petState = "idle";
+let petChainNext = null;      // あくび／のびのあとに続ける状態（眠る前・起きたあと）
 let petStateUntil = 0;
 let petNextMoveAt = 0;
 let petTickerHandle = null;
@@ -3461,10 +3429,13 @@ function getPetContext(now) {
         isNight: hour >= 19 || hour < 6,
         isLateNight: hour >= 1 && hour < 5,
         moodOver: ratio !== null && ratio >= 1,
-        moodWarn: ratio !== null && ratio >= 0.8 && ratio < 1,
+        moodWarn: ratio !== null && ratio > 0.8 && ratio < 1,
         hasToy: toys.length > 0,
         nearestToyX: nearestToyX,
         canWalk: !editorOpen,
+        isMealTime: [7, 8, 12, 13, 18, 19].indexOf(hour) !== -1,
+        actions: (roomData && roomData.pet && PET_ACTION_DEFS[roomData.pet.type])
+            ? Object.keys(PET_ACTION_DEFS[roomData.pet.type]) : [],
         affinity: getAffinityScore()
     };
 }
@@ -3495,6 +3466,8 @@ function chooseNextPetState(current, ctx, random) {
 
         if (def.needsToy && !c.hasToy) return;
         if (name === "walk" && c.canWalk === false) return;
+        // 動作の素材があるペットだけ（のびは素材が無くても従来の動きがある）
+        if (def.action && name !== "stretch" && !(c.actions && c.actions.indexOf(def.action) !== -1)) return;
 
         if (name === current) weight *= 0.25;
 
@@ -3507,6 +3480,14 @@ function chooseNextPetState(current, ctx, random) {
         if (name === "nap" && c.isNight) weight *= 2.4;
         if (name === "stretch" && c.isMorning) weight *= 2.2;
         if (name === "play" && c.affinity >= 60) weight *= 1.4;
+        if (name === "yawn") weight *= c.isLateNight ? 3 : (c.isNight ? 2 : 1);
+        if (name === "eat") weight *= c.isMealTime ? 3 : (c.isLateNight ? 0.2 : 1);
+        if (name === "groom" && c.isMorning) weight *= 1.5;
+        if (name === "ballplay") {
+            if (c.moodOver) weight *= 0.4;
+            if (c.affinity >= 60) weight *= 1.3;
+            if (c.hasToy) weight *= 1.3;
+        }
 
         candidates.push({ name: name, weight: weight });
     });
@@ -3537,12 +3518,8 @@ function applyPetState(state) {
             el.classList.toggle("is-sleeping", sleeping);
 
             const img = el.querySelector("img");
-            if (img) {
-                img.dataset.retried = "0";
-                img.src = sleeping
-                    ? (PET_SLEEP_IMG[roomData.pet.type] || PET_SLEEP_IMG.neko)
-                    : (PET_AWAKE_IMG[roomData.pet.type] || PET_AWAKE_IMG.neko);
-            }
+            const acting = img ? petApplyImage(img, roomData.pet.type, state) : false;
+            el.classList.toggle("is-acting", acting);
         });
     }
 
@@ -3588,10 +3565,19 @@ function setPetState(state, options) {
     const opts = options || {};
     const def = PET_STATES[state] || PET_STATES.idle;
     const now = Date.now();
-    const duration = opts.duration !== undefined
+    let duration = opts.duration !== undefined
         ? opts.duration
         : randomBetween(def.dur[0], def.dur[1]);
 
+    // 動作アニメは、1周の長さの整数倍にそろえる（途中で切れて不自然にならないように）
+    const actionDef = (def.action && roomData.pet) ? petActionDef(roomData.pet.type, def.action) : null;
+    if (actionDef && opts.duration === undefined) {
+        duration = actionDef.once
+            ? actionDef.cycle + 250
+            : Math.max(1, Math.round(duration / actionDef.cycle)) * actionDef.cycle;
+    }
+
+    petChainNext = null;
     petState = state;
     petStateUntil = now + duration;
     petNextMoveAt = now;
@@ -3602,8 +3588,14 @@ function setPetState(state, options) {
     return state;
 }
 
+const PET_ACTION_LINES = { yawn: "うとうと…", groom: "ぺろぺろ…", eat: "もぐもぐ", ballplay: "えいっ！" };
+
 function onPetStateChanged(state) {
     if (["sleep", "happy", "sad", "petted"].indexOf(state) !== -1) return;
+    if (PET_ACTION_LINES[state]) {
+        if (Math.random() < 0.45) petSay(getPetLine("idle", PET_ACTION_LINES[state]));
+        return;
+    }
     if (Math.random() < 0.18) petSay(pickPetLine(getCurrentBudgetRatioOrNull()));
 }
 
@@ -3672,9 +3664,24 @@ function petTick() {
     }
 
     if (now >= petStateUntil) {
-        const next = chooseNextPetState(petState, ctx, Math.random);
-        const interesting = (next === "sleep" || next === "play" || next === "walk");
+        let next = petChainNext;
+        const chained = !!next;
+        let chainAfter = null;
+        if (!next) next = chooseNextPetState(petState, ctx, Math.random);
+
+        // 眠る前はあくび、起きたあとはのび（素材があるペットだけ）
+        if (!chained) {
+            const acts = ctx.actions || [];
+            if (isSleepingState(next) && !isSleepingState(petState) && acts.indexOf("yawn") !== -1) {
+                chainAfter = next; next = "yawn";
+            } else if (isSleepingState(petState) && !isSleepingState(next) && next !== "stretch" && acts.indexOf("stretch") !== -1) {
+                chainAfter = next; next = "stretch";
+            }
+        }
+
+        const interesting = (next === "sleep" || next === "play" || next === "walk" || !!(PET_STATES[next] && PET_STATES[next].action));
         setPetState(next, { silent: !interesting });
+        petChainNext = chainAfter;
 
         if (next === "play") petPlayWithNearestToy(ctx);
     }
@@ -4055,26 +4062,21 @@ function getCurrentBudgetRatioOrNull() {
     return spent / budget;
 }
 
+// 予算の80%を超えたらペットの近くに顔文字を出す（100%以上はさらに落ち込んだ顔）
+const MOOD_FACE = { warn: "(；´･ω･)", over: "(；＿；)" };
+
 function refreshPetMood() {
     const ratio = getCurrentBudgetRatioOrNull();
     const isOver = ratio !== null && ratio >= 1;
-    const isWarn = ratio !== null && ratio >= 0.8 && ratio < 1;
+    const isWarn = ratio !== null && ratio > 0.8 && ratio < 1;
 
     document.querySelectorAll(".pet-item").forEach(el => {
         el.classList.toggle("mood-over", isOver);
         el.classList.toggle("mood-warn", isWarn);
         const badge = el.querySelector(".mood-badge");
         if (!badge) return;
-        const icon = badge.querySelector(".material-icons-round");
-        if (isOver) {
-            badge.classList.remove("hidden");
-            if (icon) icon.textContent = "sentiment_very_dissatisfied";
-        } else if (isWarn) {
-            badge.classList.remove("hidden");
-            if (icon) icon.textContent = "sentiment_neutral";
-        } else {
-            badge.classList.add("hidden");
-        }
+        badge.textContent = isOver ? MOOD_FACE.over : (isWarn ? MOOD_FACE.warn : "");
+        badge.classList.toggle("hidden", !(isOver || isWarn));
     });
 }
 
@@ -4097,8 +4099,36 @@ function pickPetLine(ratio) {
     let line;
     if (ratio === null) line = randomPick(PET_CHAT.idle);
     else if (ratio >= 1) line = randomPick(PET_CHAT.over);
-    else if (ratio >= 0.8) line = randomPick(PET_CHAT.warn);
+    else if (ratio > 0.8) line = randomPick(PET_CHAT.warn);
     else line = randomPick(PET_CHAT.under);
+    return getPetLine("idle", line);
+}
+
+// タップしたときのセリフ：今月の予算の「余裕」（使用率と残額）で変わる
+let lastTapLine = "";
+function petTapLine() {
+    const monthKey = getCurrentMonthKey();
+    const budget = appData.budget[monthKey] || 0;
+    let pool;
+    if (budget <= 0) {
+        pool = ["まず今月の予算を決めてみよう", "予算を決めると、余裕を教えてあげられるよ", "上の えんぴつ から予算を入れてね"];
+    } else {
+        const spent = expensesOfMonth(monthKey).reduce((sum, e) => sum + e.amount, 0);
+        const ratio = spent / budget;
+        const yen = Math.abs(budget - spent).toLocaleString();
+        if (ratio >= 1) {
+            pool = [`${yen}円オーバーしちゃった。ここから立て直そう`, "いったん深呼吸。次の記録から整えよう", `予算を${yen}円こえてる。無理せずゆっくりね`];
+        } else if (ratio > 0.8) {
+            pool = [`残りは${yen}円。ちょっと慎重にいこう`, `あと${yen}円。買う前にひと呼吸しよう`, "そろそろ予算が心配。今日は我慢できるかな"];
+        } else if (ratio >= 0.5) {
+            pool = [`残りは${yen}円。いいペース`, `あと${yen}円。この調子でいこう`, "半分は使ったね。後半もコツコツ"];
+        } else {
+            pool = [`まだ${yen}円も余裕がある`, "余裕たっぷり。いい感じ", `残り${yen}円。心にも余裕があるね`];
+        }
+    }
+    const choices = pool.filter(t => t !== lastTapLine);
+    const line = randomPick(choices.length ? choices : pool);
+    lastTapLine = line;
     return getPetLine("idle", line);
 }
 
@@ -4127,7 +4157,7 @@ function getTimeGreeting() {
 }
 
 function localDateKeyOf(d) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return localDateKey(d);
 }
 
 function getRecordingStreak() {
@@ -4155,6 +4185,138 @@ function petChatReply(text) {
     if (/元気|げんき|大丈夫|どう/i.test(t)) return getPetLine("idle", "元気だよ！あなたも無理しないでね");
     if (/眠|ねむ|おやすみ/i.test(t)) return getPetLine("idle", "おやすみ。また明日ね");
     return randomPick([getPetLine("idle", "なるほど！"), getPetLine("idle", "そうなんだ！"), getPetLine("idle", "うん、聞いてるよ！"), getPetLine("idle", "ふむふむ…")]);
+}
+
+// ------------------------------------------
+// ペットとの会話（AI）
+// ------------------------------------------
+// 「データ管理 → AI設定」で入れたキーを使う（レシート読み取りと共通）。
+// 未設定・通信失敗のときは、これまでのルールベースの返事にそのまま戻る。
+let petChatHistory = [];
+let petChatBusy = false;
+
+function checkAiEndpoint(settings) {
+    if (settings.provider !== "custom") return "";
+    const endpoint = String(settings.endpoint || "").trim();
+    const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(endpoint);
+    return (/^https:\/\//i.test(endpoint) || isLocal) ? "" : "エンドポイントは https:// で指定してください（localhost を除く）。";
+}
+
+function buildPetSystemPrompt() {
+    const pet = roomData.pet || {};
+    const kind = PET_CATALOG[pet.type] || PET_CATALOG.neko;
+    const monthKey = getCurrentMonthKey();
+    const budget = appData.budget[monthKey] || 0;
+    const spent = expensesOfMonth(monthKey).reduce((sum, e) => sum + e.amount, 0);
+    const money = budget > 0
+        ? `今月の予算は${budget}円、使った額は${spent}円（使用率${Math.round(spent / budget * 100)}%）。`
+        : "今月の予算はまだ決まっていない。";
+    return [
+        `あなたは家計簿アプリの中で飼い主と暮らすペット「${pet.name || kind.label}」（${kind.label}）です。`,
+        `やさしく素直な口調で、必ず日本語で、1〜2文・60文字以内で返事をする。語尾は「${kind.gobi}」で終える。`,
+        "飼い主を責めたり説教したりしない。投資・借金・法律などの専門的な助言はせず、詳しい人に聞くようやんわり促す。",
+        "APIキーや設定の話題には答えない。",
+        money,
+        `なつき度は100点中${getAffinityScore()}点。`
+    ].join("\n");
+}
+
+async function askPetLLMServer(text) {
+    if (!PET_CHAT_SERVER_URL) return null;
+    const message = String(text || "").trim().slice(0, 200);
+    if (!message) return null;
+
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 15000) : null;
+    try {
+        const res = await fetch(PET_CHAT_SERVER_URL, {
+            method: "POST",
+            headers: supabaseFunctionHeaders(),
+            body: JSON.stringify({
+                message: message,
+                history: petChatHistory.slice(-6).map(t => ({ role: t.role, text: t.text })),
+                device: getDeviceId()
+            }),
+            signal: controller ? controller.signal : undefined
+        });
+        if (res.status === 429) return "今日はたくさん話したから、また明日ね。";
+        if (!res.ok) return null;
+        const json = await res.json().catch(() => null);
+        if (!json || json.ok === false) return null;
+        const reply = String(json.text || "").replace(/\s+/g, " ").trim().slice(0, 80);
+        if (!reply) return null;
+        petChatHistory.push({ role: "user", text: message }, { role: "assistant", text: reply });
+        petChatHistory = petChatHistory.slice(-12);
+        return reply;
+    } catch (e) {
+        return null;
+    } finally {
+        if (controller) clearTimeout(timer);
+    }
+}
+
+async function askPetLLM(text) {
+    const s = getOcrSettings();
+    if (!isOcrConfigured() || checkAiEndpoint(s)) {
+        // 自分のキーが無い／使えない場合は、サーバー経由のペット会話へ。
+        return PET_CHAT_SERVER_URL ? askPetLLMServer(text) : null;
+    }
+
+    const system = buildPetSystemPrompt();
+    const turns = petChatHistory.slice(-6).concat([{ role: "user", text: text }]);
+    let req;
+    if (s.provider === "gemini") {
+        const endpoint = (s.endpoint || "https://generativelanguage.googleapis.com").replace(/\/$/, "");
+        req = {
+            url: `${endpoint}/v1beta/models/${encodeURIComponent(s.model || "gemini-2.0-flash")}:generateContent`,
+            headers: { "Content-Type": "application/json", "x-goog-api-key": s.apiKey },
+            body: {
+                systemInstruction: { parts: [{ text: system }] },
+                contents: turns.map(t => ({ role: t.role === "user" ? "user" : "model", parts: [{ text: t.text }] })),
+                generationConfig: { temperature: 0.8, maxOutputTokens: 150 }
+            }
+        };
+    } else {
+        const endpoint = (s.endpoint || "https://api.openai.com/v1").replace(/\/$/, "");
+        req = {
+            url: `${endpoint}/chat/completions`,
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s.apiKey}` },
+            body: {
+                model: s.model || "gpt-4o-mini",
+                temperature: 0.8,
+                max_tokens: 150,
+                messages: [{ role: "system", content: system }]
+                    .concat(turns.map(t => ({ role: t.role, content: t.text })))
+            }
+        };
+    }
+
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 15000) : null;
+    try {
+        const res = await fetch(req.url, {
+            method: "POST",
+            headers: req.headers,
+            body: JSON.stringify(req.body),
+            signal: controller ? controller.signal : undefined
+        });
+        if (!res.ok) return null;
+        const reply = String(extractResponseText(s.provider, await res.json()))
+            .replace(/\s+/g, " ").trim().slice(0, 80);
+        if (!reply) return null;
+        petChatHistory.push({ role: "user", text: text }, { role: "assistant", text: reply });
+        petChatHistory = petChatHistory.slice(-12);
+        return reply;
+    } catch (e) {
+        return null;
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+}
+
+async function petChatAnswer(text) {
+    const reply = await askPetLLM(text);
+    return reply ? getPetLine("idle", reply) : petChatReply(text);
 }
 
 function scheduleNextPetComment() {
@@ -4216,6 +4378,7 @@ function initRoomSystem() {
     centerRoomPreviewOnPet();
     preloadPetSleepGif();
     renderAffinity();
+    renderLoginStreak();
     startPetLifeLoops();
 
     if (roomData.pet && !petIsAsleep) {
@@ -4271,23 +4434,44 @@ function confirmPetName() {
 // ==========================================
 // デイリーログインボーナス
 // ==========================================
+// 連続ログイン日数。昨日ログインしていれば +1、1日でも空くと 1 に戻る。
+function currentLoginStreak() {
+    const st = roomData.loginStreak || { count: 0, lastDate: null };
+    if (!st.lastDate) return 0;
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    return (st.lastDate === todayDateKey() || st.lastDate === localDateKey(y)) ? st.count : 0;
+}
+
+function nextLoginStreak() {
+    const st = roomData.loginStreak || { count: 0, lastDate: null };
+    if (st.lastDate === todayDateKey()) return Math.max(1, st.count);
+    return currentLoginStreak() > 0 ? st.count + 1 : 1;
+}
+
+function renderLoginStreak() {
+    const el = document.getElementById("login-streak-label");
+    const n = currentLoginStreak();
+    if (el) el.textContent = n > 0 ? `連続ログイン ${n}日` : "";
+}
+
 function maybeShowDailyLoginBonus() {
-    const today = todayDateKey();
-    if (roomData.lastLoginDate === today) return;
-    const modal = document.getElementById("modal-daily-login");
-    if (modal) modal.classList.add("open");
+    if (roomData.lastLoginDate === todayDateKey()) return;
+    const streakEl = document.getElementById("daily-login-streak");
+    if (streakEl) streakEl.textContent = `連続ログイン ${nextLoginStreak()}日目`;
+    document.getElementById("modal-daily-login")?.classList.add("open");
 }
 
 function claimDailyLoginBonus() {
-    const amount = 200;
-    roomData.points += amount;
+    roomData.points += 200;
+    roomData.loginStreak = { count: nextLoginStreak(), lastDate: todayDateKey() };
     roomData.lastLoginDate = todayDateKey();
     saveRoomData();
     renderCurrency();
+    renderLoginStreak();
     playCoin();
     vibrate(25);
-    const modal = document.getElementById("modal-daily-login");
-    if (modal) modal.classList.remove("open");
+    document.getElementById("modal-daily-login")?.classList.remove("open");
 }
 
 // ==========================================
@@ -4346,6 +4530,7 @@ function preloadPetSleepGif() {
     if (!src) return;
     const img = new Image();
     img.src = src;
+    preloadPetActions();
 }
 
 function attachImgRetryFallback(imgEl, fallbackSrc) {
@@ -4356,6 +4541,8 @@ function attachImgRetryFallback(imgEl, fallbackSrc) {
             const base = imgEl.src.split("?")[0];
             setTimeout(() => { imgEl.src = base + "?retry=" + Date.now(); }, 400);
         } else if (fallbackSrc && !imgEl.src.endsWith(fallbackSrc)) {
+            imgEl.style.width = "";      // 動作画像の大きさ補正も外す
+            imgEl.style.margin = "";
             imgEl.src = fallbackSrc;
         }
     });
@@ -4378,7 +4565,7 @@ function createPetElement(interactive, container) {
     el.innerHTML = `
         <img src="${img}" alt="${type}" draggable="false" decoding="async">
         <div class="pet-name-tag${roomData.pet.name ? "" : " hidden"}">${escapeHtml(roomData.pet.name || "")}</div>
-        <div class="mood-badge hidden"><span class="material-icons-round"></span></div>
+        <div class="mood-badge hidden"></div>
     `;
 
     if (!interactive) {
@@ -4417,7 +4604,7 @@ function createPetElement(interactive, container) {
 
             triggerPetHop();
             spawnPetReaction("favorite");
-            petSay(pickPetLine(getCurrentBudgetRatioOrNull()));
+            petSay(petTapLine());
             vibrate(15);
         });
     }
@@ -4428,7 +4615,10 @@ function createPetElement(interactive, container) {
     }
 
     const petImgEl = el.querySelector("img");
-    if (petImgEl) attachImgRetryFallback(petImgEl, PET_AWAKE_IMG[type] || PET_AWAKE_IMG.neko);
+    if (petImgEl) {
+        attachImgRetryFallback(petImgEl, PET_AWAKE_IMG[type] || PET_AWAKE_IMG.neko);
+        if (petApplyImage(petImgEl, type, petState, { immediate: true })) el.classList.add("is-acting");
+    }
     return el;
 }
 
@@ -4441,7 +4631,7 @@ function createFurnitureElement(placedItem, interactive, container) {
     el.style.top = placedItem.y + "%";
     el.style.setProperty("--scale", placedItem.scale || 1);
     el.style.zIndex = placedItem.z || 1;
-    const src = furniture ? (ANIMATED_FURNITURE_GIF[placedItem.itemId] || furniture.img) : "";
+    const src = furniture ? furniture.img : "";
     el.innerHTML = `<img src="${src}" alt="" draggable="false" decoding="async">`;
     if (interactive) {
         el.dataset.uid = placedItem.uid;
@@ -4767,85 +4957,6 @@ function buyItem(itemId) {
 }
 
 // ==========================================
-// マイルームCSV
-// ==========================================
-function exportRoomAsCsv() {
-    const rows = [["key", "value"]];
-    rows.push(["points", roomData.points]);
-    rows.push(["lastLoginDate", roomData.lastLoginDate || ""]);
-    rows.push(["petType", roomData.pet ? roomData.pet.type : ""]);
-    rows.push(["petName", roomData.pet ? roomData.pet.name || "" : ""]);
-    rows.push(["petX", roomData.pet ? roomData.pet.x : ""]);
-    rows.push(["petY", roomData.pet ? roomData.pet.y : ""]);
-    rows.push(["petScale", roomData.pet ? roomData.pet.scale : ""]);
-    rows.push(["ownedItemIds", roomData.ownedItemIds.join("|")]);
-    roomExtraCsvPairs().forEach(pair => rows.push(pair));
-    roomData.placedItems.forEach((it, i) => {
-        rows.push([`item_${i}`, `${it.uid},${it.itemId},${it.x},${it.y},${it.scale},${it.placed},${it.z || 1}`]);
-    });
-
-    const csvContent = rows.map(r => r.map(csvEscape).join(",")).join("\r\n");
-    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const now = new Date();
-    const fname = `yoyu_aru_room_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}.csv`;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fname;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-function importRoomFromCsv(file) {
-    const statusEl = document.getElementById("data-import-room-status");
-    if (!confirm("いまのマイルーム（ポイント・家具・ペット）を、CSVの内容で置き換えます。よろしいですか？")) {
-        if (statusEl) statusEl.textContent = "読み込みをキャンセルしました。";
-        return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const rows = parseCsv(String(e.target.result));
-        const map = {};
-        const items = [];
-        rows.slice(1).forEach(r => {
-            const [key, value] = r;
-            if (!key) return;
-            if (key.startsWith("item_")) items.push(value);
-            else map[key] = value;
-        });
-
-        const newData = JSON.parse(JSON.stringify(DEFAULT_ROOM_DATA));
-        newData.points = parseInt(map.points) || 0;
-        newData.lastLoginDate = map.lastLoginDate || null;
-        if (map.petType) {
-            newData.pet = {
-                type: map.petType,
-                name: map.petName || petDefaultName(map.petType),
-                x: parseFloat(map.petX) || 50,
-                y: parseFloat(map.petY) || 85,
-                scale: parseFloat(map.petScale) || 1
-            };
-        }
-        newData.ownedItemIds = map.ownedItemIds ? map.ownedItemIds.split("|").filter(Boolean) : [];
-        applyRoomExtrasFromCsvMap(newData, map);
-        newData.placedItems = items.map(v => {
-            const [uid, itemId, x, y, scale, placed, z] = v.split(",");
-            return { uid, itemId, x: parseFloat(x), y: parseFloat(y), scale: parseFloat(scale), placed: placed === "true", z: parseInt(z) || 1 };
-        });
-
-        roomData = normalizeRoomData(newData);
-        saveRoomData();
-        renderCurrency();
-        renderRoomPreview();
-        if (statusEl) statusEl.textContent = "マイルームのデータを読み込みました";
-    };
-    reader.onerror = () => { if (statusEl) statusEl.textContent = "ファイルの読み込みに失敗しました。"; };
-    reader.readAsText(file, "utf-8");
-}
-
-// ==========================================
 // イベント登録（ルーム）
 // ==========================================
 function setupRoomEventListeners() {
@@ -4861,13 +4972,20 @@ function setupRoomEventListeners() {
 
     const petChatInput = document.getElementById("pet-chat-input");
     const petChatSend = document.getElementById("pet-chat-send");
-    const sendPetChat = () => {
-        if (!petChatInput) return;
-        const text = petChatInput.value;
+    const sendPetChat = async () => {
+        if (!petChatInput || petChatBusy) return;
+        const text = petChatInput.value.trim();
         petChatInput.value = "";
         if (!roomData.pet) return;
         if (petWakeUp()) { petSay(getPetLine("idle", "ん…なあに？")); vibrate(15); return; }
-        petSay(petChatReply(text));
+        if (!text) { petSay(petChatReply("")); return; }
+        petChatBusy = true;
+        petSay("…");
+        try {
+            petSay(await petChatAnswer(text));
+        } finally {
+            petChatBusy = false;
+        }
         vibrate(15);
     };
     petChatSend?.addEventListener("click", sendPetChat);
@@ -4891,16 +5009,6 @@ function setupRoomEventListeners() {
         triggerPetHop();
         if (Math.random() < 0.6) spawnPetReaction("favorite");
     });
-
-    document.getElementById("btn-export-room-csv")?.addEventListener("click", exportRoomAsCsv);
-    const inputImportRoomCsv = document.getElementById("input-import-room-csv");
-    if (inputImportRoomCsv) {
-        inputImportRoomCsv.addEventListener("change", (e) => {
-            const file = e.target.files && e.target.files[0];
-            if (file) importRoomFromCsv(file);
-            inputImportRoomCsv.value = "";
-        });
-    }
 
     document.getElementById("pet-float-grip")?.addEventListener("click", () => {
         if (toggleRoomCompact()) {
@@ -5658,6 +5766,87 @@ const RECEIPT_MAX_EDGE = 1600;
 const RECEIPT_JPEG_QUALITY = 0.8;
 const RECEIPT_THUMB_EDGE = 360;
 
+// ---- サーバー経由の読み取り（ユーザーは APIキー不要）----------------------------
+// 公開するときは、Supabase Edge Function の URL と publishable / anon key を入れる。
+// キーはサーバー側の秘密情報に置く。ここ（アプリのコード）には絶対に書かない。
+const SUPABASE_BASE_URL = "https://kdcxycqmkftcgnfjvdwz.supabase.co";
+const OCR_SERVER_URL = SUPABASE_BASE_URL + "/functions/v1/scan-receipt";
+const PET_CHAT_SERVER_URL = SUPABASE_BASE_URL + "/functions/v1/pet-chat";
+const OCR_SERVER_ANON_KEY = "sb_publishable_7TdvqziSh_1XleGqwYnF5g_LslTFS8x";
+const DEVICE_ID_KEY = "yoyu_aru_device_id";
+
+function supabaseFunctionHeaders() {
+    const headers = { "Content-Type": "application/json" };
+    if (OCR_SERVER_ANON_KEY) headers["apikey"] = OCR_SERVER_ANON_KEY;
+    // 旧 anon JWT のときだけ Bearer を付ける。publishable key は apikey で送る。
+    if (OCR_SERVER_ANON_KEY && /^eyJ/.test(OCR_SERVER_ANON_KEY)) {
+        headers["Authorization"] = "Bearer " + OCR_SERVER_ANON_KEY;
+    }
+    return headers;
+}
+
+let ephemeralDeviceId = "";
+
+function getDeviceId() {
+    try {
+        let id = localStorage.getItem(DEVICE_ID_KEY);
+        if (!id || id.length < 16) {
+            id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                : "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+            localStorage.setItem(DEVICE_ID_KEY, id);
+        }
+        return id;
+    } catch (e) {
+        if (!ephemeralDeviceId) {
+            ephemeralDeviceId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                : "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+        }
+        return ephemeralDeviceId;
+    }
+}
+
+function isReceiptScanAvailable() {
+    return !!OCR_SERVER_URL || isOcrConfigured();
+}
+
+async function recognizeReceiptViaServer(dataUrl) {
+    const base64 = String(dataUrl).split(",")[1] || "";
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 25000) : null;
+    let res;
+    try {
+        const headers = supabaseFunctionHeaders();
+        res = await fetch(OCR_SERVER_URL, {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify({ image: base64, mime: "image/jpeg", device: getDeviceId() }),
+            signal: controller ? controller.signal : undefined
+        });
+    } catch (e) {
+        const aborted = e && e.name === "AbortError";
+        return { ok: false, httpOk: false, error: aborted
+            ? "読み取りがタイムアウトしました。通信環境を確認して、もう一度試してください。"
+            : "通信できませんでした。オフラインか、接続が制限されている可能性があります。" };
+    } finally {
+        if (controller) clearTimeout(timer);
+    }
+
+    let json = null;
+    try { json = await res.json(); } catch (e) { json = null; }
+
+    if (res.status === 429) {
+        const msg = (json && json.error === "global_limit")
+            ? "今日は読み取りの利用が多く、いったん受付を終了しました。明日また試すか、手入力してください。"
+            : "今日の読み取り回数の上限に達しました。明日また使えます。";
+        return { ok: false, httpOk: true, error: msg, limited: true, remaining: 0 };
+    }
+    if (!res.ok || !json) {
+        return { ok: false, httpOk: false, error: "読み取りサービスに接続できませんでした。時間をおいて試してください。" };
+    }
+    const parsed = parseReceiptResponse(json.text);
+    return Object.assign({ httpOk: true, remaining: (typeof json.remaining === "number" ? json.remaining : null) }, parsed);
+}
+
 const DEFAULT_OCR_SETTINGS = {
     provider: "gemini",
     apiKey: "",
@@ -5808,10 +5997,12 @@ function validateReceipt(receipt) {
     const r = normalizeReceipt(receipt);
     const itemSum = r.items.reduce((s, it) => s + it.price * (it.qty || 1), 0);
     const warnings = [];
+    let mismatch = false;
 
     if (r.total > 0 && r.items.length > 0) {
         const diff = itemSum - r.total;
         if (Math.abs(diff) > 2) {
+            mismatch = true;
             warnings.push(
                 `品目の合計（${itemSum.toLocaleString()}円）とレシートの合計（${r.total.toLocaleString()}円）が `
                 + `${Math.abs(diff).toLocaleString()}円 違います。読み取り漏れの可能性があります。`
@@ -5828,7 +6019,7 @@ function validateReceipt(receipt) {
         warnings.push("軽減税率（8%）と10%が混在しています。品目の税率を確認してください。");
     }
 
-    return { itemSum, total: r.total, diff: itemSum - r.total, warnings };
+    return { itemSum, total: r.total, diff: itemSum - r.total, mismatch, warnings };
 }
 
 const CATEGORY_KEYWORDS = {
@@ -6073,19 +6264,15 @@ function extractResponseText(provider, json) {
 
 async function recognizeReceipt(dataUrl, settings) {
     const s = settings || getOcrSettings();
+    // 自分のキーを入れている人はこれまでどおり直接送る。入れていなければサーバー経由（キー不要）
+    if (!s.apiKey && OCR_SERVER_URL) return recognizeReceiptViaServer(dataUrl);
     if (!s.apiKey) {
         return { ok: false, httpOk: false, error: "APIキーが設定されていません。" };
     }
 
-    // カスタム先は https のみ許可（localhost だけ開発用に例外）。
-    // http のまま送ると API キーが平文で流れるため。
-    if (s.provider === "custom") {
-        const endpoint = String(s.endpoint || "").trim();
-        const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(endpoint);
-        if (!/^https:\/\//i.test(endpoint) && !isLocal) {
-            return { ok: false, httpOk: false, error: "エンドポイントは https:// で指定してください（localhost を除く）。" };
-        }
-    }
+    // カスタム先は https のみ許可（http だと API キーが平文で流れるため）
+    const endpointError = checkAiEndpoint(s);
+    if (endpointError) return { ok: false, httpOk: false, error: endpointError };
 
     const prompt = buildReceiptPrompt();
     const req = buildVisionRequest(dataUrl, s, prompt);
@@ -6131,3 +6318,710 @@ async function recognizeReceipt(dataUrl, settings) {
     const parsed = parseReceiptResponse(text);
     return Object.assign({ httpOk: true }, parsed);
 }
+
+// ================================================================
+// ▼ onboarding.js（初回ガイド）
+// ================================================================
+// ==========================================
+// onboarding.js — 初回ガイド
+// ==========================================
+// 流れ：ペットの名前を決める → ① 予算 → ② 1件記録 → ③ ペットと遊ぶ → ④ CSVでバックアップ
+// 画面をふさがない小さなカードで案内する（途中でスキップ可）。
+// 進み具合は端末に保存し、途中で閉じても続きから再開する。
+//   ・初めてペットを迎えた人にだけ自動で始まる（すでに使っている人には出ない）
+//   ・「設定 → 使い方をもう一度見る」から、いつでも見直せる
+// ==========================================
+
+const ONBOARDING_KEY = "yoyu_aru_onboarding";
+
+const ONBOARDING_STEPS = [
+    {
+        id: "budget",
+        title: "① 今月の予算を決めよう",
+        body: "上の予算ボックスの えんぴつ をタップして、今月使ってよい金額を入れてね。予算の80%をこえると、ゲージが赤くなってペットが心配するよ。",
+        target: "#budget-box",
+        action: "btn-edit-budget"
+    },
+    {
+        id: "expense",
+        title: "② 1件、記録してみよう",
+        body: "右下の ＋ をタップして、金額とカテゴリを入れて「記録する」を押してね。1件記録するごとに100ポイントと、なかよし度が1たまるよ（なかよし度は1日5まで）。",
+        target: "#fab-add-expense"
+    },
+    {
+        id: "pet",
+        title: "③ ペットと遊ぼう",
+        body: "ペットをタップすると、今月の予算の余裕に合わせて話してくれるよ。下の入力欄から話しかけることもできます。たまったポイントは、右上のメニューのショップやガチャで使えます。",
+        target: "#pet-room-preview",
+        next: true
+    },
+    {
+        id: "finish",
+        title: "④ 最後に、だいじなこと",
+        body: "データはこの端末の中だけに保存されます。機種変更や万一に備えて、メニューの「データ管理」から、CSVを書き出して保存しておこう。部屋は下に引くと小さくなるよ。",
+        target: "#btn-open-more",
+        final: true
+    }
+];
+
+function readOnboardingState() {
+    try {
+        const s = JSON.parse(localStorage.getItem(ONBOARDING_KEY) || "null");
+        return (s && typeof s === "object") ? s : null;
+    } catch (e) { return null; }
+}
+
+function writeOnboardingState(state) {
+    try { localStorage.setItem(ONBOARDING_KEY, JSON.stringify(state)); } catch (e) { /* 保存できなくても進められる */ }
+}
+
+function clearOnboardingHighlight() {
+    document.querySelectorAll(".onb-highlight").forEach(el => el.classList.remove("onb-highlight"));
+}
+
+function removeOnboardingCard() {
+    clearOnboardingHighlight();
+    document.getElementById("onboarding-card")?.remove();
+}
+
+function finishOnboarding() {
+    removeOnboardingCard();
+    writeOnboardingState({ done: true, finishedAt: new Date().toISOString() });
+}
+
+// scrollIntoView は外枠(.app-container)まで動かして画面全体がずれることがあるので、
+// 中身のスクロール領域（.app-content）だけを動かす。
+function scrollTargetIntoContent(target) {
+    const content = document.querySelector(".app-content");
+    if (!content || !content.contains(target)) return;     // 固定表示の要素は動かさない
+    const c = content.getBoundingClientRect();
+    const t = target.getBoundingClientRect();
+    const top = content.scrollTop + (t.top - c.top) - 16;
+    try { content.scrollTo({ top: Math.max(0, top), behavior: "smooth" }); } catch (e) { content.scrollTop = Math.max(0, top); }
+}
+
+// ヘッダーのすぐ下（部屋の上）に置く。下側には予算の「保存」や ＋ ボタンがあるので避ける。
+function positionOnboardingCard() {
+    const card = document.getElementById("onboarding-card");
+    const header = document.querySelector(".app-header");
+    if (!card) return;
+    const bottom = header ? header.getBoundingClientRect().bottom : 60;
+    card.style.top = Math.round(bottom + 6) + "px";
+}
+window.addEventListener("resize", positionOnboardingCard);
+
+function showOnboardingStep(index) {
+    const step = ONBOARDING_STEPS[index];
+    if (!step) { finishOnboarding(); return; }
+    writeOnboardingState({ done: false, step: index });
+    removeOnboardingCard();
+
+    const card = document.createElement("div");
+    card.id = "onboarding-card";
+    card.className = "onboarding-card";
+    card.setAttribute("role", "dialog");
+    card.setAttribute("aria-label", "使い方ガイド");
+
+    const dots = ONBOARDING_STEPS.map((_, i) => `<span class="onb-dot${i === index ? " is-active" : ""}"></span>`).join("");
+    card.innerHTML =
+        `<div class="onb-head"><span class="onb-dots">${dots}</span>` +
+        `<button type="button" class="onb-skip" id="onb-skip">スキップ</button></div>` +
+        `<h4 class="onb-title"></h4><p class="onb-body"></p>` +
+        `<div class="onb-actions"></div>`;
+    card.querySelector(".onb-title").textContent = step.title;
+    card.querySelector(".onb-body").textContent = step.body;
+
+    const actions = card.querySelector(".onb-actions");
+    if (step.final) {
+        const open = document.createElement("button");
+        open.type = "button";
+        open.className = "primary-button-sm";
+        open.textContent = "データ管理を開く";
+        open.addEventListener("click", () => {
+            finishOnboarding();
+            document.getElementById("btn-open-data")?.click();
+        });
+        const done = document.createElement("button");
+        done.type = "button";
+        done.className = "secondary-button";
+        done.textContent = "はじめる";
+        done.addEventListener("click", finishOnboarding);
+        actions.appendChild(open);
+        actions.appendChild(done);
+    } else if (step.next) {
+        const nextBtn = document.createElement("button");
+        nextBtn.type = "button";
+        nextBtn.className = "primary-button-sm";
+        nextBtn.textContent = "次へ";
+        nextBtn.addEventListener("click", () => showOnboardingStep(index + 1));
+        actions.appendChild(nextBtn);
+    } else if (step.action) {
+        const go = document.createElement("button");
+        go.type = "button";
+        go.className = "primary-button-sm";
+        go.textContent = "予算を入れる";
+        go.addEventListener("click", () => document.getElementById(step.action)?.click());
+        actions.appendChild(go);
+    }
+
+    card.querySelector("#onb-skip").addEventListener("click", finishOnboarding);
+    // .app-container の中に置く。こうするとモーダル（z-index:100）より後ろに回り、
+    // 「保存」などのボタンをカードが覆わない。
+    (document.querySelector(".app-container") || document.body).appendChild(card);
+    positionOnboardingCard();
+
+    const target = document.querySelector(step.target);
+    if (target) {
+        target.classList.add("onb-highlight");
+        scrollTargetIntoContent(target);
+    }
+}
+
+// force=true は「もう一度見る」。最初からやり直す。
+function startOnboarding(force) {
+    const state = readOnboardingState();
+    if (!force) {
+        if (state) return;                       // 開始済み、または完了済み
+        const hasData = (typeof activeExpenses === "function" && activeExpenses().length > 0);
+        if (hasData) {                           // CSVを読み込んだ人など
+            writeOnboardingState({ done: true, skipped: "has-data" });
+            return;
+        }
+    }
+    showOnboardingStep(0);
+}
+
+// app.js から呼ばれる：budget / expense が完了したら次へ
+function onboardingNotify(eventName) {
+    const state = readOnboardingState();
+    if (!state || state.done) return;
+    const index = Number(state.step) || 0;
+    const step = ONBOARDING_STEPS[index];
+    if (!step || step.id !== eventName) return;
+    // トーストやペットの反応が見えるように、少し待ってから次へ
+    setTimeout(() => {
+        const now = readOnboardingState();
+        if (now && !now.done && Number(now.step) === index) showOnboardingStep(index + 1);
+    }, 900);
+}
+
+// 入力中（キーボードが出ているとき）は、カードが入力欄に重ならないよう一時的に引っ込める
+let onbAwayTimer = null;
+function isTextField(el) {
+    return !!el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
+}
+document.addEventListener("focusin", (e) => {
+    if (!isTextField(e.target)) return;
+    clearTimeout(onbAwayTimer);
+    document.getElementById("onboarding-card")?.classList.add("is-away");
+});
+document.addEventListener("focusout", () => {
+    clearTimeout(onbAwayTimer);
+    onbAwayTimer = setTimeout(() => {
+        if (isTextField(document.activeElement)) return;
+        document.getElementById("onboarding-card")?.classList.remove("is-away");
+    }, 250);
+});
+
+// 起動時：途中で閉じていたら続きから再開する
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => {
+        const state = readOnboardingState();
+        if (state && !state.done && typeof roomData !== "undefined" && roomData.pet) {
+            showOnboardingStep(Math.min(Number(state.step) || 0, ONBOARDING_STEPS.length - 1));
+        }
+    }, 700);
+});
+
+// ================================================================
+// ▼ gacha.js（ガチャとコレクション）
+// ================================================================
+// ==========================================
+// gacha.js — ガチャとコレクション（v2.17）
+// ==========================================
+// ・ログインボーナスや記録でためたポイントで、新しいペットと部屋（マップ）が手に入る
+// ・「まだ持っていないもの」だけが出る（ダブりなし。お金のアプリなので引かされる感じを避ける）
+// ・レア度で出やすさが違う（★ふつう 6 : ★★レア 3 : ★★★スーパーレア 1 の重み）
+// ・手に入れたものは「コレクション」からいつでも切り替えられる
+// ==========================================
+
+const GACHA_COST = 1000;
+
+const GACHA_RARITY = {
+    1: { stars: "★",   label: "ノーマル",       weight: 6 },
+    2: { stars: "★★",  label: "レア",           weight: 3 },
+    3: { stars: "★★★", label: "スーパーレア",   weight: 1 }
+};
+
+const GACHA_POOL = [
+    { kind: "pet", id: "neko",      rarity: 1 },
+    { kind: "pet", id: "usagi",     rarity: 1 },
+    { kind: "map", id: "washitsu",  rarity: 1 },
+    { kind: "pet", id: "shiba",     rarity: 2 },
+    { kind: "pet", id: "hamster",   rarity: 2 },
+    { kind: "map", id: "seaside",   rarity: 2 },
+    { kind: "pet", id: "panda",     rarity: 3 },
+    { kind: "map", id: "nightloft", rarity: 3 }
+];
+
+let gachaBusy = false;
+
+// ------------------------------------------
+// ロジック（画面に依存しない部分）
+// ------------------------------------------
+function gachaIsOwned(item) {
+    return item.kind === "pet"
+        ? roomData.ownedPets.includes(item.id)
+        : roomData.ownedMaps.includes(item.id);
+}
+
+function gachaRemainingItems() {
+    return GACHA_POOL.filter(it => !gachaIsOwned(it));
+}
+
+function gachaInfo(item) {
+    if (item.kind === "pet") {
+        const p = PET_CATALOG[item.id];
+        return { label: p.label, img: PET_AWAKE_IMG[item.id], kindLabel: "ペット" };
+    }
+    const m = MAP_CATALOG[item.id];
+    return { label: m.label, img: m.img, kindLabel: "部屋" };
+}
+
+// 残りの景品から、レア度ごとの当たる確率（%）を出す
+function gachaOdds(items) {
+    const total = items.reduce((s, it) => s + GACHA_RARITY[it.rarity].weight, 0);
+    const out = {};
+    [1, 2, 3].forEach(r => {
+        const w = items.filter(it => it.rarity === r).reduce((s, it) => s + GACHA_RARITY[it.rarity].weight, 0);
+        out[r] = total > 0 ? (w / total) * 100 : 0;
+    });
+    return out;
+}
+
+function gachaPick(items, rand) {
+    const rnd = typeof rand === "function" ? rand : Math.random;
+    const total = items.reduce((s, it) => s + GACHA_RARITY[it.rarity].weight, 0);
+    let t = rnd() * total;
+    for (const it of items) {
+        t -= GACHA_RARITY[it.rarity].weight;
+        if (t < 0) return it;
+    }
+    return items[items.length - 1];
+}
+
+// 1回ひく。ポイントを引いて、持ち物に追加して保存するところまでを一度にやる
+// （途中で画面を閉じても、ポイントだけ減って何も手に入らない、が起きないように）
+function pullGacha(rand) {
+    if (roomData.points < GACHA_COST) return { ok: false, error: "ポイントが足りません" };
+    const remaining = gachaRemainingItems();
+    if (remaining.length === 0) return { ok: false, error: "すべて集めました！" };
+
+    const item = gachaPick(remaining, rand);
+    roomData.points -= GACHA_COST;
+    if (item.kind === "pet") {
+        roomData.ownedPets.push(item.id);
+        if (!roomData.petNames[item.id]) roomData.petNames[item.id] = PET_CATALOG[item.id].defaultName;
+    } else {
+        roomData.ownedMaps.push(item.id);
+    }
+    roomData.gacha.pulls = (roomData.gacha.pulls || 0) + 1;
+    saveRoomData();
+    renderCurrency();
+    return { ok: true, item };
+}
+
+function equipPet(type, newName) {
+    if (!PET_CATALOG[type] || !roomData.ownedPets.includes(type)) return false;
+    const prev = roomData.pet;
+    if (prev && prev.type !== type) roomData.petNames[prev.type] = prev.name;   // いまの子の名前は覚えておく
+    if (newName) roomData.petNames[type] = String(newName).trim().slice(0, 12);
+    const name = roomData.petNames[type] || petDefaultName(type);
+    roomData.pet = {
+        type, name,
+        x: prev ? prev.x : 50,
+        y: PET_FLOOR_Y,
+        scale: prev ? prev.scale : 1
+    };
+    saveRoomData();
+    renderRoomPreview();
+    centerRoomPreviewOnPet();
+    preloadPetSleepGif();
+    petSay(getPetLine("idle", `${name}だよ、よろしく`));
+    return true;
+}
+
+function equipMap(id) {
+    if (!MAP_CATALOG[id] || !roomData.ownedMaps.includes(id)) return false;
+    roomData.mapId = id;
+    saveRoomData();
+    applyRoomMap();
+    petSay(getPetLine("idle", `${MAP_CATALOG[id].label}にお引っこし`));
+    return true;
+}
+
+// ------------------------------------------
+// 画面
+// ------------------------------------------
+function gEl(id) { return document.getElementById(id); }
+
+function openGachaModal() {
+    renderCurrency();
+    renderGachaPane();
+    renderCollection();
+    switchGachaTab("pull");
+    gEl("modal-gacha")?.classList.add("open");
+}
+
+function closeGachaModal() {
+    if (gachaBusy) return;
+    gEl("modal-gacha")?.classList.remove("open");
+}
+
+function switchGachaTab(tab) {
+    const isPull = tab === "pull";
+    gEl("gacha-pane-pull").style.display = isPull ? "" : "none";
+    gEl("gacha-pane-collection").style.display = isPull ? "none" : "";
+    gEl("tab-gacha-pull")?.classList.toggle("is-active", isPull);
+    gEl("tab-gacha-collection")?.classList.toggle("is-active", !isPull);
+    if (!isPull) renderCollection();
+}
+
+function renderGachaPane() {
+    const remaining = gachaRemainingItems();
+    const total = GACHA_POOL.length;
+    const costEl = gEl("gacha-cost");
+    if (costEl) costEl.textContent = GACHA_COST.toLocaleString();
+
+    const remainEl = gEl("gacha-remain");
+    if (remainEl) {
+        remainEl.textContent = remaining.length === 0
+            ? "コンプリート！ すべてのペットと部屋を集めました。"
+            : `まだ出会っていないもの：あと ${remaining.length} / ${total} 種`;
+    }
+
+    const oddsEl = gEl("gacha-odds");
+    if (oddsEl) {
+        oddsEl.innerHTML = "";
+        if (remaining.length > 0) {
+            const odds = gachaOdds(remaining);
+            [3, 2, 1].forEach(r => {
+                const n = remaining.filter(it => it.rarity === r).length;
+                if (n === 0) return;
+                const row = document.createElement("div");
+                row.className = "gacha-odds-row";
+                const left = document.createElement("span");
+                left.textContent = `${GACHA_RARITY[r].stars} ${GACHA_RARITY[r].label}（${n}種）`;
+                const right = document.createElement("strong");
+                right.textContent = `${odds[r].toFixed(1)}%`;
+                row.appendChild(left); row.appendChild(right);
+                oddsEl.appendChild(row);
+            });
+        }
+    }
+
+    const btn = gEl("btn-gacha-pull");
+    const status = gEl("gacha-status");
+    if (btn) {
+        if (remaining.length === 0) {
+            btn.disabled = true; btn.textContent = "コンプリート済み";
+            if (status) status.textContent = "";
+        } else if (roomData.points < GACHA_COST) {
+            btn.disabled = true; btn.textContent = "ガチャをひく";
+            if (status) status.textContent = `あと ${(GACHA_COST - roomData.points).toLocaleString()}pt でひけます。ログインや記録でためよう！`;
+        } else {
+            btn.disabled = false; btn.textContent = `ガチャをひく（${GACHA_COST.toLocaleString()}pt）`;
+            if (status) status.textContent = "";
+        }
+    }
+}
+
+function collectionCard(kind, id, owned, active) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `collection-card${owned ? "" : " is-locked"}${active ? " is-active" : ""}${kind === "map" ? " is-map" : ""}`;
+    card.dataset.kind = kind; card.dataset.id = id;
+
+    const img = document.createElement("img");
+    img.alt = ""; img.draggable = false;
+    img.src = kind === "pet" ? PET_AWAKE_IMG[id] : MAP_CATALOG[id].img;
+    const label = document.createElement("span");
+    label.className = "collection-label";
+    const base = kind === "pet" ? PET_CATALOG[id].label : MAP_CATALOG[id].label;
+    label.textContent = owned ? base : "？？？";
+    card.appendChild(img); card.appendChild(label);
+
+    if (active) {
+        const badge = document.createElement("span");
+        badge.className = "collection-badge";
+        badge.textContent = "つかっている";
+        card.appendChild(badge);
+    }
+    const poolItem = GACHA_POOL.find(it => it.kind === kind && it.id === id);
+    if (poolItem) {
+        const stars = document.createElement("span");
+        stars.className = `collection-stars r${poolItem.rarity}`;
+        stars.textContent = GACHA_RARITY[poolItem.rarity].stars;
+        card.appendChild(stars);
+    }
+
+    card.addEventListener("click", () => {
+        if (!owned) { showToast("ガチャで手に入るよ"); return; }
+        if (active) return;
+        if (kind === "pet") equipPet(id); else equipMap(id);
+        playPop(); vibrate(15);
+        renderCollection();
+    });
+    return card;
+}
+
+function renderCollection() {
+    const petsEl = gEl("collection-pets");
+    const mapsEl = gEl("collection-maps");
+    if (!petsEl || !mapsEl) return;
+    petsEl.innerHTML = ""; mapsEl.innerHTML = "";
+
+    Object.keys(PET_CATALOG).forEach(id => {
+        const owned = roomData.ownedPets.includes(id);
+        petsEl.appendChild(collectionCard("pet", id, owned, owned && roomData.pet && roomData.pet.type === id));
+    });
+    Object.keys(MAP_CATALOG).forEach(id => {
+        const owned = roomData.ownedMaps.includes(id);
+        mapsEl.appendChild(collectionCard("map", id, owned, owned && roomData.mapId === id));
+    });
+
+    const have = roomData.ownedPets.length + roomData.ownedMaps.length;
+    const all = Object.keys(PET_CATALOG).length + Object.keys(MAP_CATALOG).length;
+    const countEl = gEl("gacha-collection-count");
+    if (countEl) countEl.textContent = `${have}/${all}`;
+}
+
+// ------------------------------------------
+// 演出：カプセルがゆれる → ひらく → 結果カード
+// ------------------------------------------
+const CAPSULE_SVG = `
+<svg class="gacha-capsule-svg" viewBox="0 0 120 120" aria-hidden="true">
+  <g class="cap-bottom"><path d="M12 60 A48 48 0 0 0 108 60 Z" fill="#fff7ec" stroke="#191b1d" stroke-width="4"/></g>
+  <g class="cap-top"><path d="M12 60 A48 48 0 0 1 108 60 Z" fill="#e8647a" stroke="#191b1d" stroke-width="4"/>
+     <ellipse cx="40" cy="36" rx="12" ry="7" fill="#fff" opacity=".55" transform="rotate(-30 40 36)"/></g>
+  <rect x="8" y="57" width="104" height="6" fill="#191b1d"/>
+</svg>`;
+
+function gachaSparkles(host, count) {
+    for (let i = 0; i < count; i++) {
+        const s = document.createElement("span");
+        s.className = "gacha-spark";
+        s.textContent = "✦";
+        s.style.left = (8 + Math.random() * 84) + "%";
+        s.style.top = (10 + Math.random() * 70) + "%";
+        s.style.animationDelay = (Math.random() * 0.6) + "s";
+        s.style.fontSize = (12 + Math.random() * 16) + "px";
+        host.appendChild(s);
+    }
+}
+
+function playGachaSequence(item) {
+    const overlay = gEl("gacha-overlay");
+    if (!overlay) return;
+    gachaBusy = true;
+    overlay.innerHTML = `<div class="gacha-stage">${CAPSULE_SVG}<p class="gacha-stage-text">ガチャッ…</p></div>`;
+    overlay.className = "gacha-overlay show";
+
+    let revealed = false;
+    const timers = [];
+    const reveal = () => {
+        if (revealed) return;
+        revealed = true;
+        timers.forEach(clearTimeout);
+        showGachaResult(item);
+    };
+    [0, 320, 640, 960].forEach((ms, i) => timers.push(setTimeout(() => { playTone(300 + i * 90, 0.07, "square", 0.06); vibrate(10); }, ms)));
+    timers.push(setTimeout(() => overlay.querySelector(".gacha-stage")?.classList.add("is-opening"), 1250));
+    timers.push(setTimeout(reveal, 1650));
+    overlay.onclick = reveal;                   // タップでスキップ
+}
+
+function showGachaResult(item) {
+    const overlay = gEl("gacha-overlay");
+    if (!overlay) return;
+    const info = gachaInfo(item);
+    const rar = GACHA_RARITY[item.rarity];
+    overlay.onclick = null;
+    overlay.className = `gacha-overlay show r${item.rarity}`;
+    overlay.innerHTML = "";
+
+    const card = document.createElement("div");
+    card.className = `gacha-result r${item.rarity}`;
+
+    const stars = document.createElement("div"); stars.className = "gacha-result-stars"; stars.textContent = rar.stars;
+    const sub = document.createElement("div"); sub.className = "gacha-result-sub"; sub.textContent = `${rar.label}／あたらしい${info.kindLabel}`;
+    const badge = document.createElement("span"); badge.className = "gacha-new"; badge.textContent = "NEW!";
+    const imgWrap = document.createElement("div"); imgWrap.className = `gacha-result-img ${item.kind}`;
+    const img = document.createElement("img"); img.src = info.img; img.alt = ""; img.draggable = false;
+    imgWrap.appendChild(img);
+    const name = document.createElement("h3"); name.className = "gacha-result-name"; name.textContent = info.label;
+
+    card.appendChild(badge); card.appendChild(stars); card.appendChild(sub); card.appendChild(imgWrap); card.appendChild(name);
+
+    let input = null;
+    if (item.kind === "pet") {
+        const label = document.createElement("label"); label.className = "gacha-name-label"; label.textContent = "名前をつけよう";
+        input = document.createElement("input");
+        input.type = "text"; input.id = "gacha-name-input"; input.className = "gacha-name-input";
+        input.maxLength = 12; input.value = roomData.petNames[item.id] || petDefaultName(item.id); input.autocomplete = "off";
+        card.appendChild(label); card.appendChild(input);
+    }
+
+    const actions = document.createElement("div"); actions.className = "gacha-result-actions";
+    const finish = (equip) => {
+        if (item.kind === "pet") {
+            const nm = (input.value || "").trim() || petDefaultName(item.id);
+            roomData.petNames[item.id] = nm.slice(0, 12);
+            saveRoomData();
+            if (equip) equipPet(item.id, nm);
+        } else if (equip) {
+            equipMap(item.id);
+        }
+        closeGachaOverlay();
+    };
+    const primary = document.createElement("button");
+    primary.type = "button"; primary.className = "primary-button";
+    primary.id = "btn-gacha-equip";
+    primary.textContent = item.kind === "pet" ? "この子といっしょにくらす" : "この部屋にお引っこし";
+    primary.addEventListener("click", () => finish(true));
+    const later = document.createElement("button");
+    later.type = "button"; later.className = "text-cancel-button";
+    later.id = "btn-gacha-later";
+    later.textContent = "あとで（コレクションに入れる）";
+    later.addEventListener("click", () => finish(false));
+    actions.appendChild(primary); actions.appendChild(later);
+    card.appendChild(actions);
+
+    overlay.appendChild(card);
+    gachaSparkles(overlay, item.rarity === 3 ? 26 : item.rarity === 2 ? 14 : 7);
+
+    // ファンファーレ（レア度が高いほど長い）
+    const notes = item.rarity === 3 ? [784, 988, 1175, 1568, 1976] : item.rarity === 2 ? [660, 880, 1109] : [660, 880];
+    notes.forEach((f, i) => setTimeout(() => playTone(f, 0.16, "triangle", 0.1), i * 110));
+    vibrate(item.rarity === 3 ? 60 : 30);
+}
+
+function closeGachaOverlay() {
+    const overlay = gEl("gacha-overlay");
+    if (overlay) { overlay.className = "gacha-overlay"; overlay.innerHTML = ""; overlay.onclick = null; }
+    gachaBusy = false;
+    renderGachaPane();
+    renderCollection();
+    renderCurrency();
+}
+
+function onGachaPullClick() {
+    if (gachaBusy) return;
+    const res = pullGacha();
+    if (!res.ok) {
+        const status = gEl("gacha-status");
+        if (status) status.textContent = res.error;
+        return;
+    }
+    playGachaSequence(res.item);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    gEl("btn-open-gacha")?.addEventListener("click", openGachaModal);
+    gEl("btn-close-gacha")?.addEventListener("click", closeGachaModal);
+    gEl("btn-gacha-pull")?.addEventListener("click", onGachaPullClick);
+    gEl("tab-gacha-pull")?.addEventListener("click", () => switchGachaTab("pull"));
+    gEl("tab-gacha-collection")?.addEventListener("click", () => switchGachaTab("collection"));
+});
+
+
+// ================================================================
+// ▼ theme.js（見た目の切り替え）
+// ================================================================
+// 保存先は localStorage の "yoyu_aru_theme"。値: default / techo / pixel / night / auto
+// 実際の見た目は themes.css が <html data-theme="…"> を見て切り替える（default は属性なし）。
+const THEME_KEY = "yoyu_aru_theme";
+const THEMES = [
+    { id: "default", name: "標準",       desc: "いつもの、やわらかい紙の色",             swatch: ["#f6efe2", "#fffdf8", "#5f6d4e"], bar: "#fef6e4" },
+    { id: "techo",   name: "手帳",       desc: "点々の紙に、判子のような枠とテープ",     swatch: ["#f4ebd8", "#c8553d", "#f2d27a"], bar: "#f4ebd8" },
+    { id: "pixel",   name: "ドット",     desc: "ゲーム画面のような、くっきりした見た目", swatch: ["#1b1f3b", "#ffd166", "#06d6a0"], bar: "#1b1f3b" },
+    { id: "night",   name: "夜",         desc: "暗い場所でも目にやさしい",               swatch: ["#201c28", "#2b2634", "#a8d08d"], bar: "#201c28" },
+    { id: "auto",    name: "おまかせ",   desc: "端末の設定（ライト／ダーク）に合わせる", swatch: ["#f6efe2", "#201c28", "#a8d08d"], bar: "" }
+];
+let themeMedia = null;
+
+function readThemePref() {
+    try {
+        const t = localStorage.getItem(THEME_KEY) || "default";
+        return THEMES.some(x => x.id === t) ? t : "default";
+    } catch (e) { return "default"; }
+}
+
+function resolveTheme(pref) {
+    if (pref !== "auto") return pref;
+    return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "night" : "default";
+}
+
+function loadPixelFont() {
+    if (document.getElementById("pixel-font-link")) return;
+    const l = document.createElement("link");
+    l.id = "pixel-font-link"; l.rel = "stylesheet";
+    l.href = "https://fonts.googleapis.com/css2?family=DotGothic16&display=swap";
+    document.head.appendChild(l);
+}
+
+function applyTheme(pref, opts) {
+    const actual = resolveTheme(pref);
+    const root = document.documentElement;
+    if (actual === "default") root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", actual);
+    if (actual === "pixel") loadPixelFont();
+    const def = THEMES.find(x => x.id === actual) || THEMES[0];
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta && def.bar) meta.setAttribute("content", def.bar);
+    if (!(opts && opts.noSave)) {
+        try { localStorage.setItem(THEME_KEY, pref); } catch (e) {}
+    }
+    renderThemeList();
+}
+
+function renderThemeList() {
+    const box = document.getElementById("theme-list");
+    if (!box) return;
+    const cur = readThemePref();
+    box.innerHTML = "";
+    THEMES.forEach(t => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "theme-option"; b.dataset.theme = t.id;
+        b.setAttribute("aria-pressed", t.id === cur ? "true" : "false");
+        const sw = document.createElement("span"); sw.className = "theme-swatch";
+        t.swatch.forEach(c => { const i = document.createElement("i"); i.style.background = c; sw.appendChild(i); });
+        const tx = document.createElement("span"); tx.className = "theme-text";
+        const n = document.createElement("span"); n.className = "theme-name"; n.textContent = t.name;
+        const d = document.createElement("span"); d.className = "theme-desc"; d.textContent = t.desc;
+        tx.appendChild(n); tx.appendChild(d);
+        const ck = document.createElement("span"); ck.className = "theme-check"; ck.textContent = t.id === cur ? "✓" : "";
+        b.appendChild(sw); b.appendChild(tx); b.appendChild(ck);
+        b.addEventListener("click", () => { applyTheme(t.id); try { vibrate(10); } catch (e) {} });
+        box.appendChild(b);
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    applyTheme(readThemePref(), { noSave: true });
+    document.getElementById("btn-open-theme")?.addEventListener("click", () => {
+        document.getElementById("modal-menu")?.classList.remove("open");
+        renderThemeList();
+        document.getElementById("modal-theme")?.classList.add("open");
+    });
+    document.getElementById("btn-close-theme")?.addEventListener("click", () => {
+        document.getElementById("modal-theme")?.classList.remove("open");
+    });
+    // 「おまかせ」のとき、端末の設定が変わったらすぐ追従する
+    if (window.matchMedia) {
+        themeMedia = window.matchMedia("(prefers-color-scheme: dark)");
+        const onChange = () => { if (readThemePref() === "auto") applyTheme("auto", { noSave: true }); };
+        if (themeMedia.addEventListener) themeMedia.addEventListener("change", onChange);
+        else if (themeMedia.addListener) themeMedia.addListener(onChange);
+    }
+});
